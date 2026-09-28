@@ -9,6 +9,8 @@ on:
       - 'dev/DevBootstrap.py'
       - 'dev/dev.spec'
       - 'dev/DevUpdater.cs'
+      - 'core/**'
+      - 'tests/**'
   workflow_dispatch:
 
 permissions:
@@ -35,6 +37,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pyinstaller
+
+      - name: 运行关系决策回归测试
+        shell: pwsh
+        run: |
+          python -m pip install pytest
+          python -m pytest tests/test_relationship_flow.py -q
 
       - name: 构建精简开发运行时
         shell: pwsh
