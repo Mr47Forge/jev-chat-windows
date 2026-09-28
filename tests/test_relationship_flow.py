@@ -5,44 +5,29 @@ from unittest.mock import patch
 from core.engine import analyze
 
 
-def test_check_history_expands_context_before_drafting():
-    messages = []
-    for i in range(14):
-        messages.append(("me" if i % 2 else "her", f"旧消息{i}"))
-    messages += [
-        ("her", "你今天是不是又忘了我跟你说过什么？"),
-        ("me", "记得，你先别提示我，让我自己说"),
-        ("her", "那你说"),
-    ]
+def test_check_history_requests_real_history_instead_of_fake_ocr_expansion():
+    messages = [("her" if i % 2 == 0 else "me", f"当前窗口消息{i}") for i in range(17)]
 
-    replies = [
-        {"answers": {
-            "best_action": {"choice": "check_history"},
-            "love_action": {"choice": "check_history"},
-            "she_needs": {"choice": "care"},
-        }, "usage": {}},
-        {"answers": {
-            "best_action": {"choice": "make_plan"},
-            "love_action": {"choice": "repair"},
-            "she_needs": {"choice": "action"},
-            "tension_resolved": {"noul": 0.1},
-        }, "usage": {}},
-        {"answers": {"best_reply": {
-            "choice": "reply_a",
-            "probabilities": {"reply_a": 0.8, "reply_b": 0.15, "reply_c": 0.05},
-        }}, "usage": {}},
-    ]
+    judged = {"answers": {
+        "best_action": {"choice": "check_history"},
+        "love_action": {"choice": "check_history"},
+        "she_needs": {"choice": "care"},
+    }, "usage": {}}
+    ranked = {"answers": {"best_reply": {
+        "choice": "reply_a",
+        "probabilities": {"reply_a": 0.8, "reply_b": 0.15, "reply_c": 0.05},
+    }}, "usage": {}}
 
-    with patch("core.engine.ask", side_effect=replies) as mocked_ask, \
-         patch("core.engine.draft_candidates", return_value=["我记得，周末吃饭我来把时间地点定好", "我来安排", "这次我弄好"]):
+    with patch("core.engine.ask", side_effect=[judged, ranked]) as mocked_ask, \
+         patch("core.engine.draft_candidates", return_value=["先核对一下", "我记得", "等我一下"]):
         result = analyze(messages, "partner", context=10)
 
-    assert result["history_checked"] is True
-    assert result["history_context"] == len(messages)
+    assert result["history_requested"] is True
+    assert result["history_checked"] is False
+    assert result["history_requested"] is False
+    assert result["history_context"] == 10
     assert len(mocked_ask.call_args_list[0].args[0]["chat"]["messages"]) == 10
-    assert len(mocked_ask.call_args_list[1].args[0]["chat"]["messages"]) == len(messages)
-    assert result["answers"]["she_needs"]["choice"] == "action"
-
+    assert len(mocked_ask.call_args_list) == 2
 
 def test_resolved_conversation_sets_stop_flag():
     answers = {
