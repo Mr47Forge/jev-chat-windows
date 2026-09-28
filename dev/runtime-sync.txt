@@ -1,0 +1,22 @@
+JEV_RUNTIME_SYNC_V2
+generation=2
+
+# 业务源码根目录
+dir=app
+dir=core
+dir=vendor
+
+# 顶层运行文件
+file=main.py
+file=DEV使用说明.md
+
+# 结构完整性校验
+required=app/services/analysis_service.py
+required=app/services/intimacy_analysis_service.py
+required=app/relationship_memory.py
+required=core/engine.py
+required=core/persona/intimacy_atlas.py
+required=core/persona/intimacy_profiler.py
+required=core/wechat_history/tracememo_provider.py
+required=vendor/goutoujunshi/SKILL.md
+required=vendor/intimacy_sources/UPSTREAM.json

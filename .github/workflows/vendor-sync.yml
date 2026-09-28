@@ -1,0 +1,54 @@
+name: vendor-sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '同步范围：all 或单个 source 名称'
+        required: false
+        default: 'all'
+  push:
+    branches: ['dev-external-source']
+    paths:
+      - 'vendor/upstreams.json'
+      - 'tools/sync_upstreams.py'
+      - '.github/workflows/vendor-sync.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vendor-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 完整同步外部项目
+        shell: bash
+        run: |
+          mode="${{ github.event.inputs.mode || 'all' }}"
+          python tools/sync_upstreams.py --sync "$mode"
+
+      - name: 提交上游快照更新
+        shell: bash
+        run: |
+          if git diff --quiet -- vendor; then
+            echo "上游快照没有变化"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add vendor
+          git commit -m "vendor: sync complete upstream snapshots"
+          git push origin HEAD:dev-external-source

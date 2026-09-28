@@ -2,6 +2,7 @@
 """PyInstaller 打包定义，CI（.github/workflows/release.yml）和 build.bat 共用这一份。
 onedir 不是 onefile：PySide6 + onnxruntime 打出来 ~150MB，onefile 每次启动都要解压一遍，慢且占临时盘。
 只在 Windows 上跑，下面的 collect_all 也只认 Windows 上装好的那几个包。"""
+import os
 from PyInstaller.utils.hooks import collect_all
 
 NAME = "jev-chat-windows"
@@ -13,8 +14,18 @@ hiddenimports = [
     "app.version", "app.update", "app.debugwin",  # debugwin 是开了调试视图才 import 的
     "core.engine", "core.draft", "core.jev_client", "core.questions", "core.providers",
     "core.llm",
+    "app.relationship_memory", "app.services.intimacy_analysis_service",
+    "core.persona.intimacy_atlas", "core.persona.intimacy_profiler",
+    "core.wechat_history.selection", "core.wechat_history.tracememo_provider",
 ]
 datas, binaries = [], []
+# 正式包需要运行时图谱/狗头军师资料；其它 persona 源仓库只保留在源码 vendor 中，不塞进 exe。
+for src, dst in (
+    (os.path.abspath("vendor/goutoujunshi"), "vendor/goutoujunshi"),
+    (os.path.abspath("vendor/intimacy_sources"), "vendor/intimacy_sources"),
+):
+    if os.path.exists(src):
+        datas.append((src, dst))
 for pkg in (
     "rapidocr_onnxruntime",  # .onnx 模型 + config.yaml 是包数据，不收就是启动即炸
     "onnxruntime",           # capi 下面那堆 DLL

@@ -1,0 +1,65 @@
+{
+  "schema": "jev-upstreams/v1",
+  "sources": [
+    {
+      "name": "goutoujunshi",
+      "repo": "shengjidaguai-china/goutoujunshi",
+      "ref": "main",
+      "target": "vendor/goutoujunshi"
+    },
+    {
+      "name": "wechat-persona",
+      "repo": "Yugenee/wechat-persona",
+      "ref": "main",
+      "target": "vendor/persona_sources/wechat-persona"
+    },
+    {
+      "name": "o-mem",
+      "repo": "OPPO-PersonalAI/O-Mem",
+      "ref": "main",
+      "target": "vendor/persona_sources/o-mem"
+    },
+    {
+      "name": "personamem-v3",
+      "repo": "bowen-upenn/PersonaMem-v3",
+      "ref": "main",
+      "target": "vendor/persona_sources/personamem-v3"
+    },
+    {
+      "name": "blaniel",
+      "repo": "Lucas-Dono/blaniel",
+      "ref": "main",
+      "target": "vendor/persona_sources/blaniel"
+    },
+    {
+      "name": "bigfive-llm-predictor",
+      "repo": "kuri-leo/BigFive-LLM-Predictor",
+      "ref": "main",
+      "target": "vendor/persona_sources/bigfive-llm-predictor"
+    },
+    {
+      "name": "kinkdirectory",
+      "repo": "kdirectoryxo/kinkdirectory",
+      "ref": "main",
+      "target": "vendor/intimacy_sources/kinkdirectory"
+    },
+    {
+      "name": "relationship-atlas",
+      "repo": "BFlinkDesign/fetlife-relationship-atlas",
+      "ref": "main",
+      "target": "vendor/intimacy_sources/relationship-atlas"
+    },
+    {
+      "name": "kinkxknow",
+      "repo": "dkconnect/kinkxknow",
+      "ref": "main",
+      "target": "vendor/intimacy_sources/kinkxknow"
+    },
+    {
+      "name": "klist",
+      "repo": "YesterdayItWasNot/KList",
+      "ref": "master",
+      "target": "vendor/intimacy_sources/klist"
+    }
+  ]
+}

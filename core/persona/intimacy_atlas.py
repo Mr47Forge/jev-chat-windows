@@ -44,9 +44,20 @@ def _norm(text: str) -> str:
 
 @lru_cache(maxsize=1)
 def source_versions() -> dict:
-    path = _VENDOR / "UPSTREAM.json"
+    # 新版完整同步器统一把实际 SHA 写到 vendor/UPSTREAMS.lock.json。
+    path = _ROOT / "vendor" / "UPSTREAMS.lock.json"
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
+        sources = data.get("sources") if isinstance(data, dict) else None
+        if isinstance(sources, dict):
+            return sources
+    except (OSError, ValueError):
+        pass
+
+    # 兼容完整同步器第一次运行前的旧快照。
+    legacy = _VENDOR / "UPSTREAM.json"
+    try:
+        return json.loads(legacy.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
 
