@@ -32,7 +32,7 @@ def generate_strategy_for_person(
     raw_source_text = "\n".join(
         f"[{x.get('platform')} / {x.get('source_kind')}] {str(x.get('content') or '').strip()}"
         for x in sources[-40:]
-        if str(x.get("content") or "").strip()
+        if x.get("source_kind") != "agent_chat" and str(x.get("content") or "").strip()
     )[-12000:]
     merged_notes = str(notes or "").strip()
     if raw_source_text:

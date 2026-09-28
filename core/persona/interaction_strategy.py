@@ -331,7 +331,7 @@ def context_text(profile: dict, *, include_intimacy: bool = False) -> str:
             lines.append("- 当前可聊：" + "；".join(str(x) for x in topics[:4]))
 
     risks = profile.get("boundaries_and_risks") or []
-    if risks:
+    if include_intimacy and risks:
         lines.append("- 边界：" + "；".join(
             str(x.get("item") or "") for x in risks[:4] if isinstance(x, dict)
         ))

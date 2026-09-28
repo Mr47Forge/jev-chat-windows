@@ -30,7 +30,7 @@ SYSTEM = """你是 Jev 的人物分析 Agent。用户会输入他对某个成年
 
 重要区分：
 - 用户自己的观察 != 对方明确承认的事实。
-- source_kind=observation/note 时，除非文本明确写“她亲口说/她明确告诉我”，否则 certainty 只能 inferred。
+- source_kind=observation/note 只作为用户观察，certainty 只能 inferred；如果是对方明确原话，应由用户选择 target_statement。
 - target_statement 是用户录入的对方明确原话，可以提取 explicit。
 - chat_paste/platform_import 中，只能把对方直接表达的内容作为 explicit；从行为模式推断的仍是 inferred。
 - source_kind=agent_chat 时，只回答用户的问题或讨论已有画像，不把本轮文字当作新证据。
