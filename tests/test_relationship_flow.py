@@ -24,7 +24,6 @@ def test_check_history_requests_real_history_instead_of_fake_ocr_expansion():
 
     assert result["history_requested"] is True
     assert result["history_checked"] is False
-    assert result["history_requested"] is False
     assert result["history_context"] == 10
     assert len(mocked_ask.call_args_list[0].args[0]["chat"]["messages"]) == 10
     assert len(mocked_ask.call_args_list) == 2

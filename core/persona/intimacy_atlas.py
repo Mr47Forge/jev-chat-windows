@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import csv
+import html
 import json
 import re
 from functools import lru_cache
@@ -122,36 +123,87 @@ def relationship_atlas() -> dict:
     return {"meta": data.get("meta") or {}, "relationships": relationships, "roles": roles}
 
 
-@lru_cache(maxsize=1)
-def klist_entries() -> list[dict]:
-    path = _VENDOR / "klist" / "script.js"
-    text = path.read_text(encoding="utf-8")
-    match = re.search(r'\bdata:\s*"((?:\\.|[^"\\])*)"', text, flags=re.S)
-    if not match:
-        return []
-
-    data = json.loads('"' + match.group(1) + '"')
+def _parse_klist_data(data: str, variant: str) -> list[dict]:
     category = ""
     columns: list[str] = []
     out: list[dict] = []
+    seen: set[tuple] = set()
     for line in data.splitlines():
         line = line.strip()
         if line.startswith("#"):
             category = line[1:].strip()
             columns = []
         elif line.startswith("(") and line.endswith(")"):
-            columns = [x.strip() for x in line[1:-1].split(",") if x.strip()]
+            columns = [x.strip() for x in line[1:-1].replace("/", ",").split(",") if x.strip()]
         elif line.startswith("* "):
             label = line[2:].strip()
+            if not label:
+                continue
+            key = (_norm(category), _norm(label), tuple(_norm(x) for x in columns))
+            if key in seen:
+                continue
+            seen.add(key)
             out.append({
                 "kind": "kink",
                 "source": "klist",
+                "source_variant": variant,
                 "id": _norm(label),
                 "category": category,
                 "label": label,
                 "perspectives": list(columns),
             })
     return out
+
+
+def _extract_klist_text(path: Path) -> str:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if path.suffix.lower() == ".js":
+        match = re.search(r'\bdata:\s*"((?:\\.|[^"\\])*)"', text, flags=re.S)
+        if not match:
+            return ""
+        try:
+            return json.loads('"' + match.group(1) + '"')
+        except ValueError:
+            return ""
+
+    match = re.search(
+        r'<textarea[^>]+id=["\']Kinks["\'][^>]*>(.*?)</textarea>',
+        text,
+        flags=re.I | re.S,
+    )
+    return html.unescape(match.group(1)) if match else ""
+
+
+@lru_cache(maxsize=1)
+def klist_entries() -> list[dict]:
+    """把 KList 当前版和较新的历史大表都纳入长尾词典。
+
+    KList 不同版本的数据规模差异很大；只读根目录 script.js 会漏掉 v2.x 中的大量项目。
+    因此保留上游完整仓库后，从多个已发布版本合并，且保留 source_variant 追溯来源。
+    """
+    root = _VENDOR / "klist"
+    candidates = [
+        ("v2.01", root / "v2.01.html"),
+        ("v2.0", root / "v2.0.html"),
+        ("v1.1.1", root / "v1.1.1.html"),
+        ("current-script", root / "script.js"),
+    ]
+    merged: list[dict] = []
+    seen: set[tuple] = set()
+    for variant, path in candidates:
+        if not path.exists():
+            continue
+        for item in _parse_klist_data(_extract_klist_text(path), variant):
+            key = (
+                _norm(item.get("category", "")),
+                _norm(item.get("label", "")),
+                tuple(_norm(x) for x in item.get("perspectives", [])),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(item)
+    return merged
 
 
 @lru_cache(maxsize=1)

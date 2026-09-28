@@ -66,3 +66,23 @@ def test_upstream_set_includes_persona_and_intimacy_sources():
         "kinkxknow",
         "klist",
     } <= names
+
+
+def test_full_vendor_sync_committed_files_ignored_by_upstream_gitignore():
+    # PersonaMem-v3 的这些文件会被它自己的 .gitignore 命中；
+    # vendor-sync 必须用 git add -f，否则“整仓同步”会悄悄漏文件。
+    assert (ROOT / "vendor/persona_sources/personamem-v3/data/gistbench_sample_10users.csv").exists()
+    assert (ROOT / "vendor/persona_sources/personamem-v3/results/_scripts/accuracy_agreement.py").exists()
+
+
+def test_every_upstream_snapshot_has_lock_and_local_metadata():
+    cfg = json.loads((ROOT / "vendor/upstreams.json").read_text(encoding="utf-8"))
+    lock = json.loads((ROOT / "vendor/UPSTREAMS.lock.json").read_text(encoding="utf-8"))
+    locked = lock["sources"]
+    for item in cfg["sources"]:
+        target = ROOT / item["target"]
+        assert target.is_dir(), item["name"]
+        meta_path = target / "_JEV_UPSTREAM.json"
+        assert meta_path.exists(), item["name"]
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        assert meta["commit"] == locked[item["name"]]["commit"]
