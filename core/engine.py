@@ -9,10 +9,12 @@ try:
     from .draft import draft_candidates
     from .jev_client import JevError, ask
     from .questions import JUDGE_QUESTIONS, build_rank_question, build_state, guidance_text
+    from .relationship_strategy import needs_history, should_stop, strategy_context
 except ImportError:
     from draft import draft_candidates
     from jev_client import JevError, ask
     from questions import JUDGE_QUESTIONS, build_rank_question, build_state, guidance_text
+    from relationship_strategy import needs_history, should_stop, strategy_context
 
 _REPLY_IDX = {"reply_a": 0, "reply_b": 1, "reply_c": 2}
 
@@ -81,6 +83,41 @@ def analyze(
     except JevError as exc:
         analysis_errors.append("判断失败：" + str(exc))
 
+    # Jev 选择“核对聊天记录”时，真正扩大上下文后再判断一次。
+    # 平时仍只看 context 条，避免每轮都烧长上下文；最多扩到 100 条。
+    history_checked = False
+    effective_context = context
+    if judged and needs_history(answers) and len(messages) > context:
+        effective_context = min(100, len(messages))
+        expanded_state = build_state(
+            messages,
+            judge_relationship if judge_relationship is not None else relationship,
+            keep=effective_context,
+            reply_to=reply_to,
+        )
+        try:
+            history_pass = ask(
+                expanded_state,
+                dict(JUDGE_QUESTIONS),
+                timeout=timeout,
+                provider=jev_provider,
+                model=jev_model,
+                base_url=jev_base_url,
+            )
+            expanded_answers = history_pass.get("answers") or {}
+            if expanded_answers:
+                answers = {**answers, **expanded_answers}
+            _add_usage(usage, history_pass.get("usage"))
+            state = expanded_state
+            history_checked = True
+        except JevError as exc:
+            analysis_errors.append("历史核对失败：" + str(exc))
+
+    guide = guidance_text(answers) if judged else ""
+    if judged:
+        strategy = strategy_context(relationship, answers, history_checked=history_checked)
+        guide = (guide + "\n\n" + strategy).strip()
+
     candidates = draft_candidates(
         messages,
         relationship,
@@ -88,12 +125,12 @@ def analyze(
         model=model,
         base_url=base_url,
         timeout=timeout,
-        keep=context,
+        keep=effective_context,
         reply_to=reply_to,
         style=style,
         persona=persona,
         thinking=thinking,
-        guidance=guidance_text(answers) if judged else None,
+        guidance=guide or None,
     )
     if not candidates:
         raise JevError("起草结果没有可用候选回复")
@@ -143,6 +180,9 @@ def analyze(
         "usage": usage,
         "reply_to": reply_to,
         "analysis_errors": analysis_errors,
+        "history_checked": history_checked,
+        "history_context": effective_context,
+        "stop_analysis": should_stop(answers) if judged else False,
     }
 
 
