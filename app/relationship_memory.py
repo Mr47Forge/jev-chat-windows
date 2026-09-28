@@ -80,6 +80,32 @@ def _init(con: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_memories_person_kind
         ON memories(person_id, kind, status);
 
+        CREATE TABLE IF NOT EXISTS relationship_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            person_id TEXT NOT NULL,
+            window_days INTEGER NOT NULL DEFAULT 30,
+            stage TEXT NOT NULL DEFAULT '',
+            trend TEXT NOT NULL DEFAULT '',
+            initiative REAL,
+            warmth REAL,
+            conflict REAL,
+            summary TEXT NOT NULL DEFAULT '',
+            evidence TEXT NOT NULL DEFAULT '',
+            observed_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY(person_id) REFERENCES people(person_id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_relationship_snapshots_person_time
+        ON relationship_snapshots(person_id, observed_at DESC);
+
+        CREATE TABLE IF NOT EXISTS memory_settings (
+            person_id TEXT PRIMARY KEY,
+            learning_enabled INTEGER NOT NULL DEFAULT 1,
+            updated_at INTEGER NOT NULL,
+            FOREIGN KEY(person_id) REFERENCES people(person_id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS import_state (
             person_id TEXT NOT NULL,
             provider TEXT NOT NULL,
@@ -91,6 +117,17 @@ def _init(con: sqlite3.Connection) -> None:
         );
         """
     )
+    # 兼容已经创建过的旧数据库：只补列，不清空用户记忆。
+    cols = {row["name"] for row in con.execute("PRAGMA table_info(memories)").fetchall()}
+    migrations = {
+        "certainty": "TEXT NOT NULL DEFAULT 'explicit'",
+        "valid_from": "INTEGER",
+        "valid_until": "INTEGER",
+        "supersedes_id": "INTEGER",
+    }
+    for name, ddl in migrations.items():
+        if name not in cols:
+            con.execute(f"ALTER TABLE memories ADD COLUMN {name} {ddl}")
 
 
 def ensure_person(person_id: str, display_name: str = "", relationship: str = "恋爱对象") -> None:
@@ -120,6 +157,10 @@ def remember(
     source_id: str = "",
     source_time: int | None = None,
     evidence: str = "",
+    certainty: str = "explicit",
+    valid_from: int | None = None,
+    valid_until: int | None = None,
+    supersedes_id: int | None = None,
 ) -> int:
     """保存一条长期记忆。kind 可用 like/dislike/boundary/habit/event/promise/profile 等。"""
     person_id, kind, content = map(lambda x: str(x or "").strip(), (person_id, kind, content))
@@ -128,6 +169,14 @@ def remember(
     ensure_person(person_id)
     now = int(time.time())
     confidence = max(0.0, min(1.0, float(confidence)))
+    certainty = str(certainty or "explicit").strip()
+    if certainty not in {"explicit", "inferred", "strategy"}:
+        raise ValueError("certainty 只能是 explicit / inferred / strategy")
+    # 推测不得伪装成确定事实。
+    if certainty == "inferred":
+        confidence = min(confidence, 0.85)
+    elif certainty == "strategy":
+        confidence = min(confidence, 0.65)
     with _db() as con:
         con.execute(
             """INSERT INTO memories
@@ -147,13 +196,36 @@ def remember(
             "SELECT id FROM memories WHERE person_id=? AND kind=? AND content=? AND source_id=?",
             (person_id, kind, content, str(source_id)),
         ).fetchone()
+        memory_id = int(row["id"])
+        con.execute(
+            """UPDATE memories SET certainty=?, valid_from=?, valid_until=?, supersedes_id=?
+               WHERE id=?""",
+            (certainty, valid_from if valid_from is not None else source_time,
+             valid_until, supersedes_id, memory_id),
+        )
+        if supersedes_id is not None:
+            con.execute(
+                "UPDATE memories SET status='superseded', valid_until=?, updated_at=? WHERE id=? AND person_id=?",
+                (valid_from if valid_from is not None else now, now, int(supersedes_id), person_id),
+            )
+        return memory_id
+        # unreachable compatibility tail
+        if False:
+        row = con.execute(
+            "SELECT id FROM memories WHERE person_id=? AND kind=? AND content=? AND source_id=?",
+            (person_id, kind, content, str(source_id)),
+        ).fetchone()
         return int(row["id"])
 
 
 def recall(person_id: str, kinds: list[str] | None = None, limit: int = 100) -> list[dict]:
-    sql = """SELECT id,kind,content,confidence,source_type,source_id,source_time,evidence,updated_at
-             FROM memories WHERE person_id=? AND status='active'"""
-    args: list = [str(person_id)]
+    now = int(time.time())
+    sql = """SELECT id,kind,content,confidence,certainty,source_type,source_id,source_time,evidence,
+                    valid_from,valid_until,supersedes_id,updated_at
+             FROM memories
+             WHERE person_id=? AND status='active'
+               AND (valid_until IS NULL OR valid_until>?)"""
+    args: list = [str(person_id), now]
     if kinds:
         marks = ",".join("?" for _ in kinds)
         sql += f" AND kind IN ({marks})"
@@ -171,6 +243,83 @@ def forget(memory_id: int) -> None:
             "UPDATE memories SET status='revoked', updated_at=? WHERE id=?",
             (int(time.time()), int(memory_id)),
         )
+
+
+
+
+def set_learning(person_id: str, enabled: bool) -> None:
+    """暂停/恢复某个对象的自动记忆学习，不影响已有记忆读取。"""
+    ensure_person(person_id)
+    with _db() as con:
+        con.execute(
+            """INSERT INTO memory_settings(person_id,learning_enabled,updated_at) VALUES(?,?,?)
+               ON CONFLICT(person_id) DO UPDATE SET
+                 learning_enabled=excluded.learning_enabled, updated_at=excluded.updated_at""",
+            (str(person_id), 1 if enabled else 0, int(time.time())),
+        )
+
+
+def learning_enabled(person_id: str) -> bool:
+    with _db() as con:
+        row = con.execute(
+            "SELECT learning_enabled FROM memory_settings WHERE person_id=?", (str(person_id),)
+        ).fetchone()
+        return True if row is None else bool(row["learning_enabled"])
+
+
+def add_relationship_snapshot(
+    person_id: str, *, window_days: int = 30, stage: str = "", trend: str = "",
+    initiative: float | None = None, warmth: float | None = None,
+    conflict: float | None = None, summary: str = "", evidence: str = "",
+    observed_at: int | None = None,
+) -> int:
+    """保存“我们之间”的阶段/趋势；与“她是什么样的人”分开。"""
+    ensure_person(person_id)
+    now = int(time.time())
+    with _db() as con:
+        cur = con.execute(
+            """INSERT INTO relationship_snapshots
+               (person_id,window_days,stage,trend,initiative,warmth,conflict,summary,evidence,observed_at,created_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+            (str(person_id), max(1, int(window_days)), str(stage), str(trend),
+             initiative, warmth, conflict, str(summary), str(evidence),
+             int(observed_at or now), now),
+        )
+        return int(cur.lastrowid)
+
+
+def relationship_trend(person_id: str, limit: int = 6) -> list[dict]:
+    """返回最近多个时间窗口，供 Jev 判断升温/降温，而不是被很久以前的状态绑死。"""
+    with _db() as con:
+        return [dict(row) for row in con.execute(
+            """SELECT id,window_days,stage,trend,initiative,warmth,conflict,summary,evidence,observed_at
+               FROM relationship_snapshots WHERE person_id=?
+               ORDER BY observed_at DESC,id DESC LIMIT ?""",
+            (str(person_id), max(1, int(limit))),
+        ).fetchall()]
+
+
+def relationship_context(person_id: str, limit: int = 4) -> str:
+    rows = relationship_trend(person_id, limit)
+    if not rows:
+        return ""
+    lines = ["【我们的关系趋势】"]
+    for row in reversed(rows):
+        bits = [f"{row['window_days']}天窗口"]
+        if row["stage"]:
+            bits.append("阶段=" + row["stage"])
+        if row["trend"]:
+            bits.append("趋势=" + row["trend"])
+        if row["summary"]:
+            bits.append(row["summary"])
+        lines.append("- " + "；".join(bits))
+    return "\n".join(lines)
+
+
+def memory_context(person_id: str) -> str:
+    """统一提供给 Jev/狗头军师：人物画像 + 我们的关系趋势。"""
+    parts = [profile_context(person_id), relationship_context(person_id)]
+    return "\n\n".join(x for x in parts if x).strip()
 
 
 def set_import_state(person_id: str, provider: str, cursor: str = "",
@@ -209,7 +358,8 @@ def profile_context(person_id: str, limit: int = 60) -> str:
     }
     grouped: dict[str, list[str]] = {}
     for row in reversed(rows):
-        grouped.setdefault(labels.get(row["kind"], row["kind"]), []).append(row["content"])
+        prefix = {"explicit": "", "inferred": "（推测）", "strategy": "（策略判断）"}.get(row.get("certainty"), "")
+        grouped.setdefault(labels.get(row["kind"], row["kind"]), []).append(prefix + row["content"])
     return "\n".join(
         f"【{kind}】\n" + "\n".join(f"- {x}" for x in values)
         for kind, values in grouped.items()
