@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""把候选填进微信输入框；自动客服模式下可发送。
+"""把候选安全填进微信输入框；发送始终由用户自己完成。
 
 安全原则：
 - 新版微信需要真实前台点击才能聚焦输入框；
@@ -285,25 +285,3 @@ def fill(hwnd, area, text):
     if u32.GetForegroundWindow() != hwnd:
         raise RuntimeError("微信失去前台焦点，已取消粘贴")
     _ctrl_key(0x56)  # Ctrl+V
-
-
-def send(hwnd, area):
-    """安全发送：只向微信窗口内部的发送按钮位置投递点击消息，不碰真实鼠标。"""
-    r, x0, _, x1, y1, frame_w, frame_h = _frame_geometry(hwnd, area)
-    pane_w = x1 - x0
-    input_h = frame_h - y1
-
-    # 原 100% DPI 下大约是“右 55 / 下 34”。
-    # 用输入区实际高度推导 UI 缩放，比 GetDpiForWindow + 固定像素可靠。
-    right_margin = max(42, min(round(input_h * 0.37), 140))
-    bottom_margin = max(26, min(round(input_h * 0.23), 90))
-    fx = x1 - right_margin
-    fy = frame_h - bottom_margin
-
-    # 发送点必须严格在“聊天面板 x 范围 + 输入区 y 范围”内。
-    if not (x0 + pane_w * 0.55 <= fx < x1 and y1 + input_h * 0.45 <= fy < frame_h):
-        raise RuntimeError("发送按钮位置校验失败，已取消自动发送")
-
-    sx, sy = _frame_to_screen(r, frame_w, frame_h, fx, fy)
-    _foreground(hwnd)
-    _physical_click_wechat(hwnd, sx, sy)

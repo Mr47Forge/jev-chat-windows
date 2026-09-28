@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """父进程：只管界面。截图 + OCR 在 app/worker.py 的子进程里跑，队列里收新消息 →
-冒出新的对方消息才调 engine → 悬浮窗给 3 条候选 → 人工填入或按设置自动发送。静默期零调用。
+冒出新的对方消息才调 engine → 悬浮窗给 3 条候选 → 由用户人工填入、修改并发送。静默期零调用。
 上下文、结果、聊天记录都按会话名（子进程 OCR 头部标题得来）分开存，切会话不串味。
 
     pip install rapidocr-onnxruntime numpy windows-capture PySide6-Fluent-Widgets
@@ -14,9 +14,9 @@ import traceback
 from collections import deque
 
 from app import chat_history, chat_profiles, settings, update, worker
-from app.services import analysis_service, auto_send_policy
+from app.services import analysis_service
 from app.capture import find_wechat_hwnd
-from app.fill import diagnostics as fill_diagnostics, fill, send
+from app.fill import fill
 from app.overlay import Overlay
 from app.version import VERSION
 
@@ -25,8 +25,7 @@ from app.version import VERSION
 # 只是缓冲区，实际喂模型几条由设置里的「参考上下文」决定
 # senders：这个群里发过言的人，去重、最近的排最前；target：用户挑的回复对象（None = 跟着最近那个走）
 chats = {}
-state = {"area": None, "busy": False, "rerun": None, "hwnd": None, "chat": "",
-         "pending_send": None}
+state = {"area": None, "busy": False, "rerun": None, "hwnd": None, "chat": ""}
 results = queue.Queue()
 update_result = queue.Queue()  # 独立小队列，别跟 results 的 (kind, r, title, revision) 形状搅在一起
 
@@ -139,79 +138,6 @@ def fill_reply(text):
         if target:
             text = f"@{target} " + text  # 纯文本，微信不认成真正的 @，只是让群里看得出在跟谁说
     fill(state["hwnd"], state["area"], text)
-
-
-def queue_auto_send(title, result, revision):
-    """客服模式：把是否能自动发送交给独立策略模块判断。"""
-    chat = chat_of(title)
-    plan = auto_send_policy.evaluate(
-        enabled=settings.auto_send(),
-        title=title,
-        active_title=state["chat"],
-        visible_title=ov.current_chat(),
-        chat_state=chat,
-        profile=chat_profiles.get(title),
-        result=result,
-    )
-    if not plan.allowed:
-        if plan.status:
-            ov.set_status(plan.status, plan.status_kind)
-        return
-
-    token = (title, revision, plan.text)
-    state["pending_send"] = token
-    delay = settings.auto_send_delay()
-    ov.set_status(f"客服自动发送：{delay} 秒后发送推荐回复；新消息到来会自动取消。", "warning")
-    ov.after(delay * 1000, lambda t=token: perform_auto_send(t))
-
-
-def perform_auto_send(token):
-    """延迟结束后再次核对；具体有效性规则由独立策略模块负责。"""
-    if state.get("pending_send") != token:
-        return
-    state["pending_send"] = None
-
-    title, revision, text = token
-    chat = chat_of(title)
-    plan = auto_send_policy.still_valid(
-        enabled=settings.auto_send(),
-        title=title,
-        active_title=state["chat"],
-        visible_title=ov.current_chat(),
-        revision=revision,
-        current_revision=chat["rev"],
-        history=chat["history"],
-        hwnd_available=state["hwnd"] is not None,
-        area_available=state["area"] is not None,
-    )
-    if not plan.allowed:
-        if plan.status:
-            ov.set_status(plan.status, plan.status_kind)
-        return
-
-    try:
-        fill_reply(text)
-    except Exception as exc:
-        reason = str(exc) or type(exc).__name__
-        ov.set_status(f"自动发送失败：填入失败 · {reason}", "error")
-        ov.log(f"[自动发送-填入失败] {type(exc).__name__}: {exc}")
-        ov.log("[输入诊断] " + fill_diagnostics(state["hwnd"], state["area"]))
-        return
-
-    # 给微信一次重绘机会，确保粘贴内容已经进入输入框。
-    import time
-    time.sleep(0.15)
-
-    try:
-        send(state["hwnd"], state["area"])
-    except Exception as exc:
-        reason = str(exc) or type(exc).__name__
-        ov.set_status(f"自动发送失败：发送失败 · {reason}", "error")
-        ov.log(f"[自动发送-发送失败] {type(exc).__name__}: {exc}")
-        ov.log("[输入诊断] " + fill_diagnostics(state["hwnd"], state["area"]))
-        return
-
-    ov.set_status("已自动发送推荐回复。", "success")
 
 
 def spawn_worker():
@@ -395,7 +321,6 @@ def drain():
         _, title, new, area = msg
         state["area"] = area
         chat = chat_of(title)
-        state["pending_send"] = None
         chat["rev"] += 1  # 这个会话有新消息了，它在跑的分析作废
         if title == ov.current_chat():  # 看的是别的会话就别把人家的候选划掉
             ov.invalidate_replies()
@@ -463,7 +388,6 @@ def tick():
                 chat_of(title)["result"] = r  # 先存着；正看着这个会话才立刻贴上去
                 if title == ov.current_chat():
                     ov.show(r)
-                    queue_auto_send(title, r, revision)
                 else:
                     ov.set_busy(False)
             else:
