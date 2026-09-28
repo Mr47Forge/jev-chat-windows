@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Relationship Atlas">
+  <rect width="512" height="512" rx="88" fill="#071f3b"/>
+  <path d="M132 370V142h109c69 0 111 35 111 95 0 38-19 68-53 83l77 50h-75l-63-43h-43v43h-63Zm63-96h41c34 0 52-12 52-37 0-24-18-36-52-36h-41v73Z" fill="#fff"/>
+  <path d="M104 406h304" stroke="#a52b4f" stroke-width="20" stroke-linecap="round"/>
+</svg>

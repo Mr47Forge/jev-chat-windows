@@ -1,0 +1,38 @@
+{
+  "name": "fetlife-relationship-atlas",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "icons": "node scripts/generate-icons.mjs",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "validate:data": "node scripts/validate-catalog.mjs",
+    "catalog:propose": "node scripts/propose-catalog-update.mjs",
+    "catalog:promote": "node scripts/promote-catalog-update.mjs",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "verify": "npm run validate:data && npm run lint && npm test && npm run build",
+    "verify:full": "npm run verify && npm run test:e2e"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "6.1.1",
+    "vite": "8.2.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.62.1",
+    "eslint": "10.9.1",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.5",
+    "globals": "17.11.0",
+    "vitest": "4.1.11"
+  }
+}

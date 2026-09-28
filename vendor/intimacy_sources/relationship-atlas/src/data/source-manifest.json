@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "captured": "2026-08-30",
+  "verified": "2026-08-31",
+  "sources": {
+    "authenticatedSettings": {
+      "url": "https://fetlife.com/settings/profile/relationships",
+      "captureMethod": "Reviewed authenticated browser capture; no scheduled crawler",
+      "relationshipMenu": {
+        "count": 73,
+        "normalizedOrderSha256": "532e17269dad500a0a8292c63a97aaf50385c3bbc8cb7cfd536f6282d42096ae"
+      },
+      "dsMenu": {
+        "count": 606,
+        "normalizedOrderSha256": "24c76602cb3664ef061a3ae6190a45c8d3ae9204cbc6a8acaec8845768203a64"
+      }
+    },
+    "relationshipKinktionary": {
+      "url": "https://fetlife.com/kinktionary/relationships-cfhsp",
+      "count": 137
+    },
+    "roleKinktionary": {
+      "url": "https://fetlife.com/kinktionary/roles-aschp",
+      "count": 955
+    },
+    "publicSelector": {
+      "url": "https://fetlife.com/join",
+      "count": 813
+    }
+  },
+  "catalogs": {
+    "relationshipUnion": 161,
+    "roleUnion": 1202,
+    "officialRelationshipExcerpts": 84,
+    "officialRoleExcerpts": 792
+  },
+  "license": {
+    "url": "https://fetlife.com/kinktionary/license-zcfzz",
+    "scope": "Noncommercial educational use",
+    "attribution": "FetLife Kinktionary",
+    "changes": "Source paragraphs are truncated to excerpts of no more than 24 words. Relationship Atlas pairing suggestions are separate editorial additions."
+  },
+  "terms": {
+    "url": "https://fetlife.com/legal/terms-of-use-hwfvu"
+  },
+  "pairingAuthority": "Relationship Atlas inference; not declared by FetLife",
+  "privacy": "Public artifacts exclude profile names, linked-member identifiers, session data, and captured profile rows."
+}

@@ -1,0 +1,8 @@
+{
+  "name": "bigfive-llm-predictor",
+  "repo": "kuri-leo/BigFive-LLM-Predictor",
+  "ref": "main",
+  "commit": "d91857fdc502f62a26012a928dc1f97554e4f957",
+  "target": "vendor/persona_sources/bigfive-llm-predictor",
+  "synced_at": "2026-09-28T19:29:47.213609+00:00"
+}

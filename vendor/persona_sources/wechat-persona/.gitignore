@@ -1,0 +1,23 @@
+# 用户数据
+config.json
+export_*.csv
+export_*.json
+*.meta.json
+wechat_analysis_*/
+group_*/
+all_keys.json
+
+# 解密相关 — 不上传,用户自行准备解密后数据库
+decrypt_windows.py
+verify_windows_setup.py
+.claude/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# macOS
+.DS_Store

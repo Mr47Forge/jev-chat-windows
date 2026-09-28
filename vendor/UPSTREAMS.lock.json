@@ -1,0 +1,86 @@
+{
+  "schema": "jev-upstreams-lock/v1",
+  "updated_at": "2026-09-28T19:29:47.213609+00:00",
+  "sources": {
+    "bigfive-llm-predictor": {
+      "name": "bigfive-llm-predictor",
+      "repo": "kuri-leo/BigFive-LLM-Predictor",
+      "ref": "main",
+      "commit": "d91857fdc502f62a26012a928dc1f97554e4f957",
+      "target": "vendor/persona_sources/bigfive-llm-predictor",
+      "synced_at": "2026-09-28T19:29:47.213609+00:00"
+    },
+    "blaniel": {
+      "name": "blaniel",
+      "repo": "Lucas-Dono/blaniel",
+      "ref": "main",
+      "commit": "8d390b13b5f21fc807ef4a64ed9fa61dbde28f4f",
+      "target": "vendor/persona_sources/blaniel",
+      "synced_at": "2026-09-28T19:29:47.213609+00:00"
+    },
+    "goutoujunshi": {
+      "name": "goutoujunshi",
+      "repo": "shengjidaguai-china/goutoujunshi",
+      "ref": "main",
+      "commit": "6db7354a4002dc7c448a9c87ffdad8132570c9d3",
+      "target": "vendor/goutoujunshi",
+      "synced_at": "2026-09-28T19:29:47.213609+00:00"
+    },
+    "kinkdirectory": {
+      "name": "kinkdirectory",
+      "repo": "kdirectoryxo/kinkdirectory",
+      "ref": "main",
+      "commit": "f940674f314966749b1e93bb307104134219b383",
+      "target": "vendor/intimacy_sources/kinkdirectory",
+      "synced_at": "2026-09-28T19:29:47.213609+00:00"
+    },
+    "kinkxknow": {
+      "name": "kinkxknow",
+      "repo": "dkconnect/kinkxknow",
+      "ref": "main",
+      "commit": "d247ad9989f934ea0f022c1be1bf77db0f400708",
+      "target": "vendor/intimacy_sources/kinkxknow",
+      "synced_at": "2026-09-28T19:29:47.213609+00:00"
+    },
+    "klist": {
+      "name": "klist",
+      "repo": "YesterdayItWasNot/KList",
+      "ref": "master",
+      "commit": "1e2bad91e72ff3c814775c2eee703da0e90cf1ad",
+      "target": "vendor/intimacy_sources/klist",
+      "synced_at": "2026-09-28T19:29:47.213609+00:00"
+    },
+    "o-mem": {
+      "name": "o-mem",
+      "repo": "OPPO-PersonalAI/O-Mem",
+      "ref": "main",
+      "commit": "46e131ac39af55d456304c61dfb881717044528e",
+      "target": "vendor/persona_sources/o-mem",
+      "synced_at": "2026-09-28T19:29:47.213609+00:00"
+    },
+    "personamem-v3": {
+      "name": "personamem-v3",
+      "repo": "bowen-upenn/PersonaMem-v3",
+      "ref": "main",
+      "commit": "ad80a3b1b322129fb0585ead33b129a87bb4e387",
+      "target": "vendor/persona_sources/personamem-v3",
+      "synced_at": "2026-09-28T19:29:47.213609+00:00"
+    },
+    "relationship-atlas": {
+      "name": "relationship-atlas",
+      "repo": "BFlinkDesign/fetlife-relationship-atlas",
+      "ref": "main",
+      "commit": "01e875f7236558d938b29e0c26ca9295a8ba6bc8",
+      "target": "vendor/intimacy_sources/relationship-atlas",
+      "synced_at": "2026-09-28T19:29:47.213609+00:00"
+    },
+    "wechat-persona": {
+      "name": "wechat-persona",
+      "repo": "Yugenee/wechat-persona",
+      "ref": "main",
+      "commit": "ee90bb209517e7a65f50697f4297ce8d8a41deec",
+      "target": "vendor/persona_sources/wechat-persona",
+      "synced_at": "2026-09-28T19:29:47.213609+00:00"
+    }
+  }
+}

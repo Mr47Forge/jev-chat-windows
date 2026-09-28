@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en-US">
+	<head>
+		<title>Kinklist</title>
+		<meta charset="UTF-8">
+		<link rel="icon" type="image/png" sizes="16x16" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAbFBMVEUAAACFJIRfLKl7Jo2OInuqHF+EJIRbLaytG1xbLaytG1z///+VIHRnKqGjHWd1JpKLIn7HpdOAJYn06/Tarcy1d7GYN4no0uSxgr6oeb2tZaacWKWqUZTdw927k8eTa77Ynr2IUKzKgau8ap9GZ/26AAAAC3RSTlMAVcbGxsaqVVWqqh+VAvAAAACMSURBVBgZBcHBboJAAAXA2bcUAT0ZD/7//zVpIxWUFTpTOG1nCPN+KMYOBNX8zqlz7bpbjEndp1KP3vb+1G18fD7nTcsZuDyY/hgCfK30G02A79X1oBEChhcNEWDtNCQBA68eESAXayGECsdgHoLMFTxHlhtLt9un6rT83H/t1KKfaAi0Z6HUAcFSV/8xnzFuH7zptQAAAABJRU5ErkJggg==" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="./style.css">
+		<script src="./script.js"></script>
+	</head>
+	<body>
+		<div class="contentWrapper widthWrapper body">
+			<header>
+				<div class="title">
+					<span>Kinklist</span>
+				</div>
+				<div class="export">
+					<div class="export-field">
+						<input class="export-link invisible" type="url">
+						<span class="export-loading hidden">Loading</span>
+					</div>
+					<button class="export-button invisible">Export to Imgur</button>
+					<button class="generate-button">Generate</button>
+				</div>
+				<div class="menu">
+					<button class="input-button"></button>
+					<button class="reset-button"></button>
+					<div class="tooltip-container">
+						<button class="settings-button"></button>
+						<div class="menu-tooltip settings-button-tooltip">
+							<button class="preset-settings">Presets</button>
+							<button class="exported-images">Exported Images</button>
+							<button class="help">Help</button>
+						</div>
+					</div>
+				</div>
+				<div class="legend"></div>
+			</header>
+			<div class="error hidden">
+				<p>It seems that there was an error trying to execute the script.</p>
+				<p>You can <a href="https://github.com/MobButcher/KinkList/issues">check if this issue was reported already</a> and try to use <a href="https://rawcdn.githack.com/Goctionni/KinkList/aa4cbd332326eeae6a97369a75bfe75b219de18e/v1.0.2.html">this page</a> instead.</p>
+			</div>
+			<div class="kinklist"></div>
+			<footer>
+				<p>Original idea by <a target="_blank" rel="noopener noreferrer" href="https://github.com/Goctionni/KinkList">Goctionni</a>.</p>
+				<p>Complete rewrite by MobButcher. <a target="_blank" rel="noopener noreferrer" href="https://twitter.com/MobButcherDev">Twitter</a></p>
+				<p>If you want to access original project's website, <a target="_blank" rel="noopener noreferrer" href="https://rawcdn.githack.com/Goctionni/KinkList/aa4cbd332326eeae6a97369a75bfe75b219de18e/v1.0.2.html">here's a link for you</a>.</p>
+				<p>Visit official <a target="_blank" rel="noopener noreferrer" href="https://github.com/MobButcher/KinkList">GitHub</a> page to learn how you can make new suggestions, report any issues, and more!</p>
+				<p><a rel="license" target="_blank" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0;" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAPAgMAAAAOp6AcAAAADFBMVEUAAAD///+7v7p1dnVTvlT+AAAAf0lEQVQY02PACkRDMUAIg9Qq09CiFSjqWBikVlwNjVmNLrgGqP7VATTBxQkz1LUaRFlYGAQEAhgYAwLAgm4Xt2s1CDgKMIgIsjCwMLKABV0Dw4EqGRxCBAUZRBkdQ5BUOjgwCASyMDAIssDMBKsEm8nqyIKwnbA7sfoIu9+xAQA32DGfdbaF4wAAAABJRU5ErkJggg==" /></a> This work is licensed under a <a rel="license" target="_blank" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.</p>
+				<p>Attribution to "MobButcher".</p>
+				<p>You are free to use images produced by this tool however you want: they're yours.</p>
+				<p>CC license logo was modified by MobButcher.</p>
+				<p>Version 2.2.1, released on January 24, 2021.</p>
+			</footer>
+		</div>
+		<div class="carousel overlay hidden">
+			<div class="overlay-wrapper">
+				<div class="previous"></div>
+				<div class="current">
+					<header>
+						<h2 class="category"></h2>
+						<div class="selection">
+							<h3 class="kink"></h3>
+							<h3 class="column"></h3>
+						</div>
+						<button class="close-overlay">&times;</button>
+					</header>
+					<div class="values"></div>
+				</div>
+				<div class="next"></div>
+			</div>
+		</div>
+		<div class="presets overlay hidden">
+			<div class="overlay-wrapper">
+				<div class="preset-background">
+					<div class="preset-header">
+						<select name="preset">
+							<option disabled>Built-in presets</option>
+							<option value="default">Default</option>
+							<option disabled>Custom presets</option>
+						</select>
+						<button class="close-overlay">&times;</button>
+					</div>
+					<button class="create">Create</button>
+					<button class="rename disable-on-default">Rename</button>
+					<button class="duplicate">Duplicate</button>
+					<button class="delete disable-on-default">Delete</button>
+					<textarea class="disable-on-default"></textarea>
+					<button class="save disable-on-default">Save</button>
+					<button class="select">Select</button>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
