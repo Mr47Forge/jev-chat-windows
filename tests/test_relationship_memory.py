@@ -91,3 +91,69 @@ def test_learning_can_be_paused_without_deleting_memory(tmp_path, monkeypatch):
     memory.set_learning("x", False)
     assert memory.learning_enabled("x") is False
     assert memory.recall("x")[0]["content"] == "周末一起吃饭"
+
+
+def test_intimacy_preference_separates_fantasy_from_real_world(tmp_path, monkeypatch):
+    monkeypatch.setenv("JEV_DATA_DIR", str(tmp_path))
+    import app.relationship_memory as memory
+    memory = importlib.reload(memory)
+
+    memory.add_intimacy_preference(
+        "x", "权力交换", "偏好被主导",
+        scope="fantasy", certainty="inferred", confidence=0.95,
+        source_type="wechat", source_id="m1", evidence="多次主动讨论相关幻想",
+    )
+    row = memory.recall_intimacy_preferences("x")[0]
+    assert row["scope"] == "fantasy"
+    assert row["certainty"] == "inferred"
+    assert row["confidence"] <= 0.75
+
+    # 普通聊天上下文默认绝不注入敏感画像。
+    assert "权力交换" not in memory.memory_context("x")
+    sensitive = memory.memory_context("x", include_intimacy=True)
+    assert "【幻想偏好】" in sensitive
+    assert "偏好被主导" in sensitive
+    assert "不等于现实意愿" in sensitive
+
+
+def test_inferred_real_world_intimacy_is_strictly_capped(tmp_path, monkeypatch):
+    monkeypatch.setenv("JEV_DATA_DIR", str(tmp_path))
+    import app.relationship_memory as memory
+    memory = importlib.reload(memory)
+
+    memory.add_intimacy_preference(
+        "x", "公开情境刺激", "可能愿意现实尝试",
+        scope="real_world_willingness", certainty="inferred", confidence=1.0,
+        source_id="m2",
+    )
+    row = memory.recall_intimacy_preferences("x")[0]
+    assert row["confidence"] <= 0.60
+
+
+def test_intimacy_boundary_and_experience_are_distinct(tmp_path, monkeypatch):
+    monkeypatch.setenv("JEV_DATA_DIR", str(tmp_path))
+    import app.relationship_memory as memory
+    memory = importlib.reload(memory)
+
+    memory.add_intimacy_preference(
+        "x", "疼痛刺激", "明确拒绝",
+        scope="boundary", certainty="explicit", source_id="b1",
+    )
+    memory.add_intimacy_preference(
+        "x", "角色扮演", "曾明确说尝试过",
+        scope="experience", certainty="explicit", source_id="e1",
+    )
+    scopes = {x["scope"] for x in memory.recall_intimacy_preferences("x")}
+    assert scopes == {"boundary", "experience"}
+
+
+def test_ensure_person_does_not_overwrite_relationship_on_memory_write(tmp_path, monkeypatch):
+    monkeypatch.setenv("JEV_DATA_DIR", str(tmp_path))
+    import app.relationship_memory as memory
+    memory = importlib.reload(memory)
+
+    memory.ensure_person("x", "对象", "朋友")
+    memory.remember("x", "like", "咖啡", source_id="m1")
+    with memory._db() as con:
+        row = con.execute("SELECT relationship FROM people WHERE person_id='x'").fetchone()
+    assert row["relationship"] == "朋友"

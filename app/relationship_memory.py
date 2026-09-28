@@ -106,6 +106,32 @@ def _init(con: sqlite3.Connection) -> None:
             FOREIGN KEY(person_id) REFERENCES people(person_id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS intimacy_preferences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            person_id TEXT NOT NULL,
+            dimension TEXT NOT NULL,
+            value TEXT NOT NULL,
+            scope TEXT NOT NULL,
+            certainty TEXT NOT NULL DEFAULT 'explicit',
+            confidence REAL NOT NULL DEFAULT 1.0,
+            status TEXT NOT NULL DEFAULT 'active',
+            source_type TEXT NOT NULL DEFAULT 'manual',
+            source_id TEXT NOT NULL DEFAULT '',
+            source_time INTEGER,
+            evidence TEXT NOT NULL DEFAULT '',
+            counterevidence TEXT NOT NULL DEFAULT '',
+            valid_from INTEGER,
+            valid_until INTEGER,
+            supersedes_id INTEGER,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            UNIQUE(person_id, dimension, value, scope, source_id),
+            FOREIGN KEY(person_id) REFERENCES people(person_id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_intimacy_preferences_person
+        ON intimacy_preferences(person_id, status, dimension, scope);
+
         CREATE TABLE IF NOT EXISTS import_state (
             person_id TEXT NOT NULL,
             provider TEXT NOT NULL,
@@ -130,20 +156,22 @@ def _init(con: sqlite3.Connection) -> None:
             con.execute(f"ALTER TABLE memories ADD COLUMN {name} {ddl}")
 
 
-def ensure_person(person_id: str, display_name: str = "", relationship: str = "恋爱对象") -> None:
+def ensure_person(person_id: str, display_name: str = "", relationship: str | None = None) -> None:
     person_id = str(person_id or "").strip()
     if not person_id:
         raise ValueError("person_id 不能为空")
     now = int(time.time())
+    relationship_explicit = relationship is not None and bool(str(relationship).strip())
+    relationship_value = str(relationship).strip() if relationship_explicit else "恋爱对象"
     with _db() as con:
         con.execute(
             """INSERT INTO people(person_id, display_name, relationship, created_at, updated_at)
                VALUES(?,?,?,?,?)
                ON CONFLICT(person_id) DO UPDATE SET
                  display_name=CASE WHEN excluded.display_name<>'' THEN excluded.display_name ELSE people.display_name END,
-                 relationship=excluded.relationship,
+                 relationship=CASE WHEN ? THEN excluded.relationship ELSE people.relationship END,
                  updated_at=excluded.updated_at""",
-            (person_id, str(display_name or ""), str(relationship or "恋爱对象"), now, now),
+            (person_id, str(display_name or ""), relationship_value, now, now, 1 if relationship_explicit else 0),
         )
 
 
@@ -309,10 +337,176 @@ def relationship_context(person_id: str, limit: int = 4) -> str:
     return "\n".join(lines)
 
 
-def memory_context(person_id: str) -> str:
-    """统一提供给 Jev/狗头军师：人物画像 + 我们的关系趋势。"""
+def memory_context(person_id: str, *, include_intimacy: bool = False) -> str:
+    """统一提供给 Jev/狗头军师：人物画像 + 关系趋势。
+
+    敏感亲密画像默认不注入；只有当前话题确实相关时才显式 include_intimacy=True。
+    """
     parts = [profile_context(person_id), relationship_context(person_id)]
+    if include_intimacy:
+        parts.append(intimacy_context(person_id))
     return "\n\n".join(x for x in parts if x).strip()
+
+
+
+_INTIMACY_SCOPES = {
+    "topic_interest", "fantasy", "real_world_willingness", "experience", "boundary",
+}
+_INTIMACY_CERTAINTY = {"explicit", "inferred"}
+_INTIMACY_SCOPE_LABELS = {
+    "topic_interest": "话题兴趣",
+    "fantasy": "幻想偏好",
+    "real_world_willingness": "现实意愿",
+    "experience": "实际经历",
+    "boundary": "明确边界",
+}
+
+
+def add_intimacy_preference(
+    person_id: str,
+    dimension: str,
+    value: str,
+    *,
+    scope: str = "topic_interest",
+    certainty: str = "explicit",
+    confidence: float = 1.0,
+    source_type: str = "manual",
+    source_id: str = "",
+    source_time: int | None = None,
+    evidence: str = "",
+    counterevidence: str = "",
+    valid_from: int | None = None,
+    valid_until: int | None = None,
+    supersedes_id: int | None = None,
+) -> int:
+    """保存敏感的亲密/性偏好画像。
+
+    scope 必须区分“聊得来/幻想”与“现实愿意/实际经历/边界”。
+    inferred 永远只是推测，不能当作现实同意；越接近现实行为，推测置信度上限越低。
+    """
+    person_id = str(person_id or "").strip()
+    dimension = str(dimension or "").strip()
+    value = str(value or "").strip()
+    scope = str(scope or "").strip()
+    certainty = str(certainty or "").strip()
+    if not person_id or not dimension or not value:
+        raise ValueError("person_id / dimension / value 不能为空")
+    if scope not in _INTIMACY_SCOPES:
+        raise ValueError("scope 无效")
+    if certainty not in _INTIMACY_CERTAINTY:
+        raise ValueError("certainty 只能是 explicit / inferred")
+
+    ensure_person(person_id)
+    now = int(time.time())
+    confidence = max(0.0, min(1.0, float(confidence)))
+    if certainty == "inferred":
+        # 敏感画像比普通人物画像更保守。
+        confidence = min(confidence, 0.75)
+        if scope in {"real_world_willingness", "experience", "boundary"}:
+            confidence = min(confidence, 0.60)
+
+    with _db() as con:
+        con.execute(
+            """INSERT INTO intimacy_preferences
+               (person_id,dimension,value,scope,certainty,confidence,status,
+                source_type,source_id,source_time,evidence,counterevidence,
+                valid_from,valid_until,supersedes_id,created_at,updated_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(person_id,dimension,value,scope,source_id) DO UPDATE SET
+                 certainty=excluded.certainty,
+                 confidence=excluded.confidence,
+                 status='active',
+                 source_type=excluded.source_type,
+                 source_time=excluded.source_time,
+                 evidence=excluded.evidence,
+                 counterevidence=excluded.counterevidence,
+                 valid_from=excluded.valid_from,
+                 valid_until=excluded.valid_until,
+                 supersedes_id=excluded.supersedes_id,
+                 updated_at=excluded.updated_at""",
+            (person_id, dimension, value, scope, certainty, confidence, "active",
+             str(source_type), str(source_id), source_time, str(evidence or ""),
+             str(counterevidence or ""), valid_from if valid_from is not None else source_time,
+             valid_until, supersedes_id, now, now),
+        )
+        row = con.execute(
+            """SELECT id FROM intimacy_preferences
+               WHERE person_id=? AND dimension=? AND value=? AND scope=? AND source_id=?""",
+            (person_id, dimension, value, scope, str(source_id)),
+        ).fetchone()
+        preference_id = int(row["id"])
+        if supersedes_id is not None:
+            con.execute(
+                """UPDATE intimacy_preferences
+                   SET status='superseded', valid_until=?, updated_at=?
+                   WHERE id=? AND person_id=?""",
+                (valid_from if valid_from is not None else now, now, int(supersedes_id), person_id),
+            )
+        return preference_id
+
+
+def recall_intimacy_preferences(
+    person_id: str,
+    *,
+    scopes: list[str] | None = None,
+    min_confidence: float = 0.0,
+    limit: int = 100,
+) -> list[dict]:
+    """读取敏感画像；调用方必须主动调用，本模块不会把它默认塞进每轮聊天。"""
+    now = int(time.time())
+    sql = """SELECT id,dimension,value,scope,certainty,confidence,source_type,source_id,
+                    source_time,evidence,counterevidence,valid_from,valid_until,supersedes_id,updated_at
+             FROM intimacy_preferences
+             WHERE person_id=? AND status='active'
+               AND confidence>=?
+               AND (valid_until IS NULL OR valid_until>?)"""
+    args: list = [str(person_id), max(0.0, min(1.0, float(min_confidence))), now]
+    if scopes:
+        clean = [str(x) for x in scopes if str(x) in _INTIMACY_SCOPES]
+        if not clean:
+            return []
+        sql += " AND scope IN (" + ",".join("?" for _ in clean) + ")"
+        args.extend(clean)
+    sql += " ORDER BY COALESCE(source_time,updated_at) DESC,id DESC LIMIT ?"
+    args.append(max(1, int(limit)))
+    with _db() as con:
+        return [dict(row) for row in con.execute(sql, args).fetchall()]
+
+
+def revoke_intimacy_preference(preference_id: int) -> None:
+    with _db() as con:
+        con.execute(
+            "UPDATE intimacy_preferences SET status='revoked', updated_at=? WHERE id=?",
+            (int(time.time()), int(preference_id)),
+        )
+
+
+def intimacy_context(person_id: str, limit: int = 40) -> str:
+    """仅供亲密/性相关场景显式调用。
+
+    “幻想/话题兴趣”不会被表述成“现实愿意”；推测也永远带推测标记。
+    """
+    rows = recall_intimacy_preferences(person_id, limit=limit)
+    if not rows:
+        return ""
+    grouped: dict[str, list[str]] = {}
+    for row in reversed(rows):
+        scope = _INTIMACY_SCOPE_LABELS.get(row["scope"], row["scope"])
+        if row["certainty"] == "inferred":
+            prefix = f"（推测 {round(float(row['confidence']) * 100)}%）"
+        else:
+            prefix = "（明确）"
+        grouped.setdefault(scope, []).append(
+            f"{prefix}{row['dimension']}：{row['value']}"
+        )
+    head = [
+        "【亲密与性偏好】",
+        "注意：话题兴趣/幻想不等于现实意愿；任何现实行为都以当下明确同意和边界为准。",
+    ]
+    for scope, values in grouped.items():
+        head.append(f"【{scope}】")
+        head.extend("- " + x for x in values)
+    return "\n".join(head)
 
 
 def set_import_state(person_id: str, provider: str, cursor: str = "",
