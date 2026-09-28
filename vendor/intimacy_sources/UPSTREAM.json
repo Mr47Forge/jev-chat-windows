@@ -1,0 +1,52 @@
+{
+  "schema": "jev-intimacy-sources/v1",
+  "synced_at": "2026-09-29",
+  "policy": "保留上游关键原始数据/算法快照，Jev 自己做统一适配；上游条目不直接等于人物结论。",
+  "sources": {
+    "kinkdirectory": {
+      "repo": "kdirectoryxo/kinkdirectory",
+      "branch": "main",
+      "commit": "f940674f314966749b1e93bb307104134219b383",
+      "included": [
+        "src/data/kinks.ts",
+        "src/locales-csv/kink-translations-zh.csv",
+        "README.md"
+      ]
+    },
+    "relationship_atlas": {
+      "repo": "BFlinkDesign/fetlife-relationship-atlas",
+      "branch": "main",
+      "commit": "01e875f7236558d938b29e0c26ca9295a8ba6bc8",
+      "included": [
+        "src/data/catalog.json",
+        "src/data/discovery-terms.json",
+        "README.md"
+      ]
+    },
+    "kinkxknow": {
+      "repo": "dkconnect/kinkxknow",
+      "branch": "main",
+      "commit": "d247ad9989f934ea0f022c1be1bf77db0f400708",
+      "included": [
+        "script.js"
+      ]
+    },
+    "klist": {
+      "repo": "YesterdayItWasNot/KList",
+      "branch": "master",
+      "commit": "1e2bad91e72ff3c814775c2eee703da0e90cf1ad",
+      "included": [
+        "script.js"
+      ]
+    }
+  },
+  "meta_dimensions": {
+    "KOS": [
+      "identity",
+      "practice",
+      "paraphernalia",
+      "community",
+      "sexual_communication"
+    ]
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "captured": "2026-08-31",
+  "purpose": "Navigation-only vocabulary that maps common community language to captured catalog labels without creating or redefining platform entries.",
+  "entries": [
+    {
+      "target": "Polyamory",
+      "terms": ["KTP", "kitchen table polyamory", "kitchen table poly", "parallel polyamory", "garden party polyamory", "lap-sitting polyamory"],
+      "basis": "Community terminology",
+      "sources": ["https://www.readyforpolyamory.com/polyamory-glossary", "https://www.multiamory.com/podcast/322-from-the-kitchen-table-to-the-parallel-universe"]
+    },
+    {
+      "target": "Ethical Non-Monogamy",
+      "terms": ["ENM", "ethical nonmonogamy"],
+      "basis": "Common shorthand",
+      "sources": ["https://fetlife.com/kinktionary/relationships/ethical-non-monogamy-mbwtf"]
+    },
+    {
+      "target": "Consensual Non-Monogamy",
+      "terms": ["CNM", "consensual nonmonogamy"],
+      "basis": "Common shorthand",
+      "sources": ["https://fetlife.com/kinktionary/relationships/consensual-non-monogamy-x2yz9"]
+    },
+    {
+      "target": "Relationship Anarchist",
+      "terms": ["RA", "relationship anarchy"],
+      "basis": "Common shorthand",
+      "sources": ["https://fetlife.com/kinktionary/relationships/relationship-anarchist-ftkp9"]
+    },
+    {
+      "target": "Queerplatonic Partner",
+      "terms": ["QPR", "queerplatonic relationship"],
+      "basis": "Common shorthand",
+      "sources": ["https://fetlife.com/kinktionary/relationships/queerplatonic-partner-vic6o"]
+    },
+    {
+      "target": "Nesting Partner",
+      "terms": ["cohabiting partner", "live-in partner"],
+      "basis": "Community terminology",
+      "sources": ["https://www.readyforpolyamory.com/polyamory-glossary"]
+    },
+    {
+      "target": "Metamour",
+      "terms": ["meta"],
+      "basis": "Common shorthand",
+      "sources": ["https://fetlife.com/kinktionary/relationships/metamour-9pxpk"]
+    },
+    {
+      "target": "Polycule",
+      "terms": ["relationship network"],
+      "basis": "Community terminology",
+      "sources": ["https://fetlife.com/kinktionary/relationships/polycule-sxfti"]
+    },
+    {
+      "target": "Comet Partner",
+      "terms": ["comet relationship"],
+      "basis": "Community terminology",
+      "sources": ["https://fetlife.com/kinktionary/relationships/comet-partner-fert6"]
+    },
+    {
+      "target": "Don't Ask Don't Tell",
+      "terms": ["DADT"],
+      "basis": "Published acronym",
+      "sources": ["https://fetlife.com/kinktionary/relationships/don-t-ask-don-t-tell-i01su"]
+    },
+    {
+      "target": "Friends With Benefits",
+      "terms": ["FWB"],
+      "basis": "Common shorthand",
+      "sources": ["https://fetlife.com/kinktionary/relationships/friends-with-benefits-ahti4"]
+    },
+    {
+      "target": "Long-Distance Relationship",
+      "terms": ["LDR"],
+      "basis": "Common shorthand",
+      "sources": ["https://fetlife.com/kinktionary/relationships/long-distance-relationship-kc5xr"]
+    },
+    {
+      "target": "Amatonormativity",
+      "terms": ["relationship escalator"],
+      "basis": "Related community concept",
+      "sources": ["https://www.readyforpolyamory.com/polyamory-glossary"]
+    },
+    {
+      "target": "Breeding",
+      "terms": ["breed me", "breeding kink"],
+      "basis": "Current community navigation language",
+      "sources": ["https://fetlife.com/writings/popular"]
+    },
+    {
+      "target": "Taskmaster",
+      "terms": ["tasks in a dynamic", "tasks in our dynamic", "D/s tasks", "daily tasks"],
+      "basis": "Current community navigation language",
+      "sources": ["https://fetlife.com/writings/popular", "https://fetlife.com/kinktionary/roles/taskmaster-akgvw"]
+    }
+  ]
+}
