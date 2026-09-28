@@ -85,7 +85,7 @@ def analyze(
 
     # 历史聊天不能从当前 OCR/messages 假装“扩展”出来。
     # 如果 Jev 判断需要核对历史，只发出需求标记；
-    # 真正的历史由独立微信历史模块从用户白名单联系人数据库中提供。
+    # 真正历史由平台适配层提供：微信只是当前一个实现，也可以来自抖音/QQ/Telegram/手工粘贴等。
     history_requested = bool(judged and needs_history(answers))
     history_checked = False
     effective_context = context

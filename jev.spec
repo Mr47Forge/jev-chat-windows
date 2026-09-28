@@ -15,7 +15,11 @@ hiddenimports = [
     "core.engine", "core.draft", "core.jev_client", "core.questions", "core.providers",
     "core.llm",
     "app.relationship_memory", "app.services.intimacy_analysis_service",
+    "app.person_workspace", "app.services.person_input_service",
+    "app.services.strategy_service", "app.services.markdown_export_service",
     "core.persona.intimacy_atlas", "core.persona.intimacy_profiler",
+    "core.persona.interaction_strategy", "core.persona.person_agent",
+    "core.sources.models", "core.sources.provider",
     "core.wechat_history.selection", "core.wechat_history.tracememo_provider",
 ]
 datas, binaries = [], []

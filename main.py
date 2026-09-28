@@ -4,7 +4,7 @@
 上下文、结果、聊天记录都按会话名（子进程 OCR 头部标题得来）分开存，切会话不串味。
 
     pip install rapidocr-onnxruntime numpy windows-capture PySide6-Fluent-Widgets
-两个模型（判断 Jev / 起草语言模型）的来源和 key 在独立设置页填写，不用改代码。IDE 里直接 Run。
+两个模型（判断 Jev / 起草语言模型）的来源和 key 在独立设置页填写，不用改代码。\n人物分析工作台与微信采集解耦：没有微信、没有聊天记录也可直接输入观察或粘贴其它平台聊天。IDE 里直接 Run。
 """
 import ctypes
 import multiprocessing

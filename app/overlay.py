@@ -21,6 +21,7 @@ from qfluentwidgets import (
 
 from app import chat_history, chat_profiles, knowledge, persona_skill, settings
 from app.services.edit_guard import EditGuard
+from app.person_workspace import PersonWorkspace
 from core import jev_client, llm, providers
 from core.questions import CHOICE_LABELS
 
@@ -361,6 +362,7 @@ class Overlay:
         self._shown = ""  # 界面上正在看的会话（浏览时和上面不一样）
         self._force_quit = False
         self._tray_notice_shown = False
+        self._personWorkspace = None
         self._bubble_color = _GREEN
         self._trayIcon = _tray_icon(self._bubble_color)
         self._geometryAnimation = None
@@ -551,6 +553,10 @@ class Overlay:
         self.knowledgeButton.setToolTip("管理会按关键词或常驻规则带入分析的本地笔记")
         self.knowledgeButton.clicked.connect(self.open_knowledge)
         profile_row.addWidget(self.knowledgeButton)
+        self.personButton = PushButton("人物分析")
+        self.personButton.setToolTip("不依赖微信：可输入观察、原话或粘贴任意平台聊天，并导出完整人物档案")
+        self.personButton.clicked.connect(self.open_person_workspace)
+        profile_row.addWidget(self.personButton)
         body.addLayout(profile_row)
 
         persona_row = QHBoxLayout()
@@ -2171,6 +2177,22 @@ class Overlay:
         type_name = next((label for label, value in _CHAT_TYPES if value == profile.get("chat_type", "auto")), "自动识别")
         suffix = "" if profile["saved"] else " · 未单独设置"
         self.profileSummary.setText(f"关系：{name} · {type_name}{suffix}")
+
+    def open_person_workspace(self):
+        """人物分析工作台与微信采集解耦；没有聊天窗口也能直接使用。"""
+        initial = self._shown or self._chat
+        if self._personWorkspace is None:
+            self._personWorkspace = PersonWorkspace(self.win, initial_person=initial)
+            self._personWorkspace.finished.connect(self._person_workspace_closed)
+        else:
+            if initial:
+                self._personWorkspace._refresh_people(initial)
+        self._personWorkspace.show()
+        self._personWorkspace.raise_()
+        self._personWorkspace.activateWindow()
+
+    def _person_workspace_closed(self, _result):
+        self._personWorkspace = None
 
     def open_profile(self):
         if self.pages.currentWidget() != self.home and not self._prepare_module_open():

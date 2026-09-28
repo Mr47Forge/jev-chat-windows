@@ -132,6 +132,48 @@ def _init(con: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_intimacy_preferences_person
         ON intimacy_preferences(person_id, status, dimension, scope);
 
+        CREATE TABLE IF NOT EXISTS strategy_profiles (
+            person_id TEXT PRIMARY KEY,
+            schema TEXT NOT NULL DEFAULT 'jev-interaction-strategy/v1',
+            payload TEXT NOT NULL DEFAULT '{}',
+            source_type TEXT NOT NULL DEFAULT 'model',
+            source_id TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            FOREIGN KEY(person_id) REFERENCES people(person_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS source_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            person_id TEXT NOT NULL,
+            source_kind TEXT NOT NULL,
+            platform TEXT NOT NULL DEFAULT 'manual',
+            author_role TEXT NOT NULL DEFAULT 'observer',
+            content TEXT NOT NULL,
+            external_id TEXT NOT NULL DEFAULT '',
+            source_time INTEGER,
+            metadata TEXT NOT NULL DEFAULT '{}',
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY(person_id) REFERENCES people(person_id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_source_items_person_time
+        ON source_items(person_id, created_at DESC, id DESC);
+
+        CREATE TABLE IF NOT EXISTS analysis_dialogue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            person_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            source_item_id INTEGER,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY(person_id) REFERENCES people(person_id) ON DELETE CASCADE,
+            FOREIGN KEY(source_item_id) REFERENCES source_items(id) ON DELETE SET NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_analysis_dialogue_person_time
+        ON analysis_dialogue(person_id, created_at ASC, id ASC);
+
         CREATE TABLE IF NOT EXISTS import_state (
             person_id TEXT NOT NULL,
             provider TEXT NOT NULL,
@@ -173,6 +215,232 @@ def ensure_person(person_id: str, display_name: str = "", relationship: str | No
                  updated_at=excluded.updated_at""",
             (person_id, str(display_name or ""), relationship_value, now, now, 1 if relationship_explicit else 0),
         )
+
+
+def list_people() -> list[dict]:
+    """列出已经建立长期档案的人物，供平台无关的人物工作台使用。"""
+    with _db() as con:
+        return [dict(row) for row in con.execute(
+            """SELECT person_id,display_name,relationship,created_at,updated_at
+               FROM people ORDER BY updated_at DESC,created_at DESC"""
+        ).fetchall()]
+
+
+def person_record(person_id: str) -> dict:
+    with _db() as con:
+        row = con.execute(
+            """SELECT person_id,display_name,relationship,created_at,updated_at
+               FROM people WHERE person_id=?""",
+            (str(person_id),),
+        ).fetchone()
+        return dict(row) if row else {}
+
+
+def resolve_person_id(label: str) -> str:
+    """界面会话名不是人物主键时，先按 display_name 反查。
+
+    没找到就保留 label；这样手工人物、微信、抖音等来源可以逐步绑定到同一个人物。
+    """
+    label = str(label or "").strip()
+    if not label:
+        return ""
+    with _db() as con:
+        row = con.execute("SELECT person_id FROM people WHERE person_id=?", (label,)).fetchone()
+        if row:
+            return str(row["person_id"])
+        row = con.execute(
+            """SELECT person_id FROM people WHERE display_name=?
+               ORDER BY updated_at DESC LIMIT 1""",
+            (label,),
+        ).fetchone()
+        return str(row["person_id"]) if row else label
+
+
+def add_source_item(
+    person_id: str,
+    content: str,
+    *,
+    source_kind: str = "observation",
+    platform: str = "manual",
+    author_role: str = "observer",
+    external_id: str = "",
+    source_time: int | None = None,
+    metadata: dict | None = None,
+) -> int:
+    """保存平台无关的原始资料。
+
+    原始资料和模型推断分开：这里保存“用户实际喂了什么”，后续画像只引用 source_item id。
+    """
+    person_id = str(person_id or "").strip()
+    content = str(content or "").strip()
+    if not person_id or not content:
+        raise ValueError("person_id / content 不能为空")
+    ensure_person(person_id)
+    now = int(time.time())
+    raw_meta = json.dumps(metadata or {}, ensure_ascii=False, separators=(",", ":"))
+    with _db() as con:
+        cur = con.execute(
+            """INSERT INTO source_items
+               (person_id,source_kind,platform,author_role,content,external_id,source_time,metadata,created_at)
+               VALUES(?,?,?,?,?,?,?,?,?)""",
+            (person_id, str(source_kind), str(platform), str(author_role), content,
+             str(external_id or ""), source_time, raw_meta, now),
+        )
+        return int(cur.lastrowid)
+
+
+def source_items(person_id: str, limit: int = 5000) -> list[dict]:
+    with _db() as con:
+        rows = con.execute(
+            """SELECT id,source_kind,platform,author_role,content,external_id,source_time,metadata,created_at
+               FROM source_items WHERE person_id=?
+               ORDER BY COALESCE(source_time,created_at) ASC,id ASC LIMIT ?""",
+            (str(person_id), max(1, int(limit))),
+        ).fetchall()
+    out = []
+    for row in rows:
+        item = dict(row)
+        try:
+            item["metadata"] = json.loads(item.get("metadata") or "{}")
+        except (TypeError, ValueError):
+            item["metadata"] = {}
+        out.append(item)
+    return out
+
+
+def add_dialogue_entry(
+    person_id: str,
+    role: str,
+    content: str,
+    *,
+    source_item_id: int | None = None,
+) -> int:
+    person_id = str(person_id or "").strip()
+    role = str(role or "").strip()
+    content = str(content or "").strip()
+    if not person_id or role not in {"user", "assistant"} or not content:
+        raise ValueError("人物分析对话参数无效")
+    ensure_person(person_id)
+    with _db() as con:
+        cur = con.execute(
+            """INSERT INTO analysis_dialogue(person_id,role,content,source_item_id,created_at)
+               VALUES(?,?,?,?,?)""",
+            (person_id, role, content, source_item_id, int(time.time())),
+        )
+        return int(cur.lastrowid)
+
+
+def dialogue(person_id: str, limit: int = 200) -> list[dict]:
+    with _db() as con:
+        return [dict(row) for row in con.execute(
+            """SELECT id,role,content,source_item_id,created_at
+               FROM analysis_dialogue WHERE person_id=?
+               ORDER BY created_at ASC,id ASC LIMIT ?""",
+            (str(person_id), max(1, int(limit))),
+        ).fetchall()]
+
+
+def save_strategy_profile(
+    person_id: str,
+    payload: dict,
+    *,
+    source_type: str = "model",
+    source_id: str = "",
+) -> dict:
+    person_id = str(person_id or "").strip()
+    if not person_id:
+        raise ValueError("person_id 不能为空")
+    if not isinstance(payload, dict):
+        raise ValueError("payload 必须是对象")
+    ensure_person(person_id)
+    now = int(time.time())
+    schema = str(payload.get("schema") or "jev-interaction-strategy/v1")
+    raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    with _db() as con:
+        con.execute(
+            """INSERT INTO strategy_profiles
+               (person_id,schema,payload,source_type,source_id,created_at,updated_at)
+               VALUES(?,?,?,?,?,?,?)
+               ON CONFLICT(person_id) DO UPDATE SET
+                 schema=excluded.schema,
+                 payload=excluded.payload,
+                 source_type=excluded.source_type,
+                 source_id=excluded.source_id,
+                 updated_at=excluded.updated_at""",
+            (person_id, schema, raw, str(source_type), str(source_id), now, now),
+        )
+    return load_strategy_profile(person_id)
+
+
+def load_strategy_profile(person_id: str) -> dict:
+    with _db() as con:
+        row = con.execute(
+            """SELECT schema,payload,source_type,source_id,created_at,updated_at
+               FROM strategy_profiles WHERE person_id=?""",
+            (str(person_id),),
+        ).fetchone()
+    if not row:
+        return {}
+    try:
+        payload = json.loads(row["payload"])
+    except (TypeError, ValueError):
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+    payload = dict(payload)
+    payload["_storage"] = {
+        "schema": row["schema"],
+        "source_type": row["source_type"],
+        "source_id": row["source_id"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+    return payload
+
+
+def all_memories(person_id: str, *, include_inactive: bool = True) -> list[dict]:
+    sql = """SELECT id,kind,content,confidence,certainty,status,source_type,source_id,source_time,
+                    evidence,valid_from,valid_until,supersedes_id,created_at,updated_at
+             FROM memories WHERE person_id=?"""
+    args: list = [str(person_id)]
+    if not include_inactive:
+        sql += " AND status='active'"
+    sql += " ORDER BY COALESCE(source_time,updated_at) ASC,id ASC"
+    with _db() as con:
+        return [dict(row) for row in con.execute(sql, args).fetchall()]
+
+
+def all_relationship_snapshots(person_id: str) -> list[dict]:
+    with _db() as con:
+        return [dict(row) for row in con.execute(
+            """SELECT id,window_days,stage,trend,initiative,warmth,conflict,summary,evidence,
+                      observed_at,created_at
+               FROM relationship_snapshots WHERE person_id=?
+               ORDER BY observed_at ASC,id ASC""",
+            (str(person_id),),
+        ).fetchall()]
+
+
+def all_intimacy_preferences(person_id: str, *, include_inactive: bool = True) -> list[dict]:
+    sql = """SELECT id,dimension,value,scope,certainty,confidence,status,source_type,source_id,
+                    source_time,evidence,counterevidence,valid_from,valid_until,supersedes_id,
+                    created_at,updated_at
+             FROM intimacy_preferences WHERE person_id=?"""
+    args: list = [str(person_id)]
+    if not include_inactive:
+        sql += " AND status='active'"
+    sql += " ORDER BY COALESCE(source_time,updated_at) ASC,id ASC"
+    with _db() as con:
+        return [dict(row) for row in con.execute(sql, args).fetchall()]
+
+
+def all_import_states(person_id: str) -> list[dict]:
+    with _db() as con:
+        return [dict(row) for row in con.execute(
+            """SELECT provider,cursor,last_message_time,updated_at
+               FROM import_state WHERE person_id=? ORDER BY provider""",
+            (str(person_id),),
+        ).fetchall()]
 
 
 def remember(

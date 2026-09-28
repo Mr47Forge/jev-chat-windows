@@ -5,7 +5,8 @@
 """
 from __future__ import annotations
 
-from app import chat_profiles, knowledge, persona_skill
+from app import chat_profiles, knowledge, persona_skill, relationship_memory
+from app.services import strategy_service
 
 
 def build(title: str, messages: list) -> dict:
@@ -26,9 +27,23 @@ def build(title: str, messages: list) -> dict:
     if notes:
         judge_relationship += "\n联系人备注：" + notes
 
+    # 长期人物画像与关系趋势是平台无关的：可能来自微信、抖音、手工观察或其它来源。
+    # 敏感亲密画像默认不进入普通实时聊天。
+    person_id = relationship_memory.resolve_person_id(title)
+    person = relationship_memory.person_record(person_id)
+    long_term = ""
+    strategy = ""
+    if person:
+        long_term = relationship_memory.memory_context(person_id, include_intimacy=False)
+        strategy = strategy_service.realtime_context(person_id, include_intimacy=False)
+        if long_term:
+            judge_relationship += "\n长期人物/关系背景（事实与推测已区分）：\n" + long_term
+
     # 产品知识只给起草层。意图 / 危险度判断只需要关系和真实聊天，
     # 不应该被大量商品资料、规则文档挤占判断上下文。
     relationship = judge_relationship
+    if strategy:
+        relationship += "\n互动策略参考（不是对方事实）：\n" + strategy
     matched_notes = knowledge.match(title, messages)
     if matched_notes:
         relationship += "\n知识库背景（只把它当事实，不要编造）：\n" + "\n".join(
@@ -48,4 +63,7 @@ def build(title: str, messages: list) -> dict:
         "persona": persona,
         "persona_name": persona_data.get("name") if persona_data else "",
         "knowledge_count": len(matched_notes),
+        "person_id": person_id if person else "",
+        "long_term_memory": bool(long_term),
+        "interaction_strategy": bool(strategy),
     }
