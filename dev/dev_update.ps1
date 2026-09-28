@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$Root = Split-Path -Parent $PSScriptRoot
 $RepoZip = "https://github.com/Mr47Forge/jev-chat-windows/archive/refs/heads/dev-external-source.zip"
 $Temp = Join-Path $env:TEMP ("jev-chat-dev-update-" + [Guid]::NewGuid().ToString("N"))
 $Zip = Join-Path $Temp "src.zip"

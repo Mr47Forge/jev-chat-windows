@@ -19,4 +19,4 @@ required=core/persona/intimacy_atlas.py
 required=core/persona/intimacy_profiler.py
 required=core/wechat_history/tracememo_provider.py
 required=vendor/goutoujunshi/SKILL.md
-required=vendor/intimacy_sources/UPSTREAM.json
+required=vendor/UPSTREAMS.lock.json
