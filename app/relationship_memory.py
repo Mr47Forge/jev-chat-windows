@@ -209,13 +209,6 @@ def remember(
                 (valid_from if valid_from is not None else now, now, int(supersedes_id), person_id),
             )
         return memory_id
-        # unreachable compatibility tail
-        if False:
-        row = con.execute(
-            "SELECT id FROM memories WHERE person_id=? AND kind=? AND content=? AND source_id=?",
-            (person_id, kind, content, str(source_id)),
-        ).fetchone()
-        return int(row["id"])
 
 
 def recall(person_id: str, kinds: list[str] | None = None, limit: int = 100) -> list[dict]:
