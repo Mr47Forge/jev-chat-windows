@@ -63,20 +63,7 @@ class TraceMemoProvider:
 
     def contacts(self):
         """列出联系人供用户手动选择；本方法不导入聊天内容。"""
-        candidates = (
-            "/api/v1/contacts",
-            "/api/v1/wechat/contacts",
-            "/api/v1/query/contacts",
-        )
-        last = None
-        for path in candidates:
-            try:
-                data = self._get(path)
-                if data is not None:
-                    return data
-            except WeChatHistoryError as exc:
-                last = exc
-        raise last or WeChatHistoryError("当前 TraceMemo 版本没有可用的联系人接口")
+        return self._get("/api/v1/contact", {"type": "user"})
 
     def messages_for_contact(
         self,
@@ -93,31 +80,28 @@ class TraceMemoProvider:
         if not str(contact_id).strip():
             raise ValueError("必须先明确选择一个微信联系人")
         params = {
-            "contactId": contact_id,
+            "talker": contact_id,
             "startTime": start_time,
             "endTime": end_time,
-            "limit": limit,
         }
-        candidates = (
-            "/api/v1/chatlog",
-            "/api/v1/query/messages",
-            "/api/v1/messages",
-        )
-        last = None
-        for path in candidates:
-            try:
-                data = self._get(path, params)
-                if data is not None:
-                    return data
-            except WeChatHistoryError as exc:
-                last = exc
-        raise last or WeChatHistoryError("当前 TraceMemo 版本没有可用的消息接口")
+        # chatlog 直读微信数据库，不依赖异步知识索引。
+        # limit 不属于 chatlog 的公开参数，保留参数仅为调用方接口稳定；
+        # 如需限量应在返回后由 Jev 侧处理。
+        data = self._get("/api/v1/chatlog", params)
+        if limit and isinstance(data, dict) and isinstance(data.get("messages"), list):
+            data = dict(data)
+            data["messages"] = data["messages"][-int(limit):]
+            data["count"] = len(data["messages"])
+        return data
 
     def media(self, media_id: str) -> bytes:
         """取得数据库消息对应的原始媒体；不使用屏幕截图/OCR。"""
         if not str(media_id).strip():
             raise ValueError("media_id 不能为空")
-        url = self.base_url + "/api/v1/media/" + str(media_id)
+        media_id = str(media_id)
+        url = media_id if media_id.startswith("http://") or media_id.startswith("https://") else (
+            self.base_url + (media_id if media_id.startswith("/api/v1/media/") else "/api/v1/media/" + media_id)
+        )
         headers = {}
         if self.token:
             headers["Authorization"] = "Bearer " + self.token
