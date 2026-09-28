@@ -603,7 +603,7 @@ class Overlay:
         insight_box.setContentsMargins(14, 12, 14, 12)
         insight_box.setSpacing(7)
         row = QHBoxLayout()
-        self.insightTitle = _label("对话参考", 12, _MUTED)
+        self.insightTitle = _label("关系参考", 12, _MUTED)
         row.addWidget(self.insightTitle, 1)
         self.tension = _label("", 11)
         self.tension.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -615,7 +615,7 @@ class Overlay:
         insight_box.addWidget(self.intent)
         self.judgmentExtra = _label("", 12, _MUTED)
         insight_box.addWidget(self.judgmentExtra)
-        self.insight.setToolTip("根据当前聊天片段推测，可能理解有偏差。危险度为 0–9，并显示 Jev 的把握度。")
+        self.insight.setToolTip("根据当前可见聊天做实时关系判断，不等于心理诊断；信息不足时应显示为信息不足。")
         self.insight.hide()
         body.addWidget(self.insight)
 
@@ -3113,12 +3113,21 @@ class Overlay:
             value = (answers.get(name) or {}).get("confidence")
             return f" · 把握 {round(value * 100)}%" if isinstance(value, (int, float)) and 0 <= value <= 1 else ""
 
-        self.summary.setText("建议：" + _choice(answers, "best_action") + conf("best_action"))
+        self.summary.setText(
+            "建议：" + _choice(answers, "best_action") + conf("best_action") +
+            "\n关系策略 · " + _choice(answers, "love_action") + conf("love_action")
+        )
         self.intent.setText(
             "可能意图 · " + _choice(answers, "true_intent") + conf("true_intent") +
             "\n可能需要 · " + _choice(answers, "she_needs") + conf("she_needs")
         )
 
+        love_bits = [
+            "对方状态 · " + _choice(answers, "partner_tone"),
+            "关系阶段 · " + _choice(answers, "relationship_stage"),
+            "互动趋势 · " + _choice(answers, "interaction_trend"),
+            "近期互惠 · " + _choice(answers, "reciprocity"),
+        ]
         extra = []
         should = (answers.get("should_reply_now") or {}).get("noul")
         if isinstance(should, (int, float)) and 0 <= should <= 1:
@@ -3132,7 +3141,10 @@ class Overlay:
         errors = result.get("analysis_errors") or []
         if errors:
             extra.append(errors[0])
-        self.judgmentExtra.setText("  ·  ".join(extra))
+        detail_lines = ["  ·  ".join(love_bits)]
+        if extra:
+            detail_lines.append("  ·  ".join(extra))
+        self.judgmentExtra.setText("\n".join(detail_lines))
         self.judgmentExtra.setToolTip("\n".join(errors) if errors else "")
 
         danger = answers.get("danger_level") or {}

@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+try:
+    from .love_questions import LOVE_CHOICE_LABELS, LOVE_GUIDE_FIELDS, LOVE_QUESTIONS
+except ImportError:
+    from love_questions import LOVE_CHOICE_LABELS, LOVE_GUIDE_FIELDS, LOVE_QUESTIONS
+
 JUDGE_QUESTIONS: dict = {
     "literal_question": {
         "type": "noul",
@@ -204,6 +209,9 @@ JUDGE_QUESTIONS: dict = {
 }
 
 
+# 恋爱场景的实时关系判断与原 Jev 题目走同一次 System One 请求。
+JUDGE_QUESTIONS.update(LOVE_QUESTIONS)
+
 # choice 类答案的中文说法，界面和起草小抄共用这一份（app/overlay.py 从这里导）。
 CHOICE_LABELS: dict = {
     "true_intent": {
@@ -223,8 +231,13 @@ CHOICE_LABELS: dict = {
     },
 }
 
-_GUIDE_FIELDS = (("true_intent", "对方意图"), ("she_needs", "对方需要"),
-                 ("best_action", "建议动作"))
+CHOICE_LABELS.update(LOVE_CHOICE_LABELS)
+
+_GUIDE_FIELDS = (
+    ("true_intent", "对方意图"),
+    ("she_needs", "对方需要"),
+    ("best_action", "建议动作"),
+) + LOVE_GUIDE_FIELDS
 
 
 def guidance_text(answers: dict) -> str:
@@ -246,6 +259,7 @@ def guidance_text(answers: dict) -> str:
         lines.append("- " + "；".join(tail))
     if not lines:
         return ""
+    lines.append("- 关系判断只依据可见行为；信息不足就留白，不读心。明确拒绝、不适或要求空间时停止推进；优先互惠和可退出。")
     return "判断参考（Jev 给的，起草要顺着它写，但口吻仍按我的）：\n" + "\n".join(lines)
 
 

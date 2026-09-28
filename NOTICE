@@ -17,6 +17,22 @@ PySide6-Fluent-Widgets，该组件是 GPLv3 协议，非商用免费，商用需
 「第三方组件」）。因此发布包整体受 GPLv3 约束：想商用的人请自行向该组件作者购买商业授权，
 或者自己换掉这个组件，本项目不代为处理，也不对发布包能不能商用做任何保证。
 
+
+## 恋爱分析框架来源
+
+本分支的实时恋爱判断模块重新实现并融合了以下 MIT 项目的公开思路：
+
+| 项目 | 许可证 | 融入 Jev 的部分 |
+| --- | --- | --- |
+| she-love-me | MIT | 关系阶段、互动趋势、投入不对称、证据不足留白等分析维度 |
+| goutoujunshi | MIT | 事实/推测/未知分离、互惠与边界、低压力下一步、可退出原则 |
+
+- she-love-me: https://github.com/863401402/she-love-me — Copyright (c) 2026 她不一样
+- goutoujunshi: https://github.com/shengjidaguai-china/goutoujunshi — Copyright (c) 2026 powerycy
+
+这里不是把两个项目整套运行时直接嵌入，而是保留出处后按 Jev 的 System One + 起草链重新实现实时判断层；
+后续长期记忆、深度关系报告等模块继续保持独立边界，避免和 OCR / UI / 回复链耦合。
+
 ## 第三方组件
 
 | 组件 | 许可证 | 备注 |
