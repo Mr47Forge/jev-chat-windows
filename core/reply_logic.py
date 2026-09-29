@@ -80,7 +80,7 @@ def build(answers: dict, recommended_reply: str = "") -> dict:
             "note": "教学术语；提示降低推进强度，不解释成“她在测试你”。",
         })
 
-    if tone == "testing" or intent == "confirm_you_care":
+    if tone == "testing" or (intent == "confirm_you_care" and bool(stage or task or m3_phase)):
         terms.append({
             "term": "Frame",
             "label": "Frame · 框架/自身立场",
