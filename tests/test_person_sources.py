@@ -166,7 +166,7 @@ def test_context_can_use_non_wechat_person_memory(tmp_path, monkeypatch):
         "schema": "jev-interaction-strategy/v1",
         "summary": "一次只问一个问题",
         "praise": {"best_targets": []},
-        "conversation": {"works": []},
+        "conversation": {"works": [{"item": "一次只问一个问题", "how": "不要连续追问"}]},
         "relationship_progression": {"current_stage": "熟悉期", "next_step": "保持轻松交流"},
         "intimacy_progression": {
             "current_level": 0, "current_name": "普通聊天",
@@ -181,6 +181,7 @@ def test_context_can_use_non_wechat_person_memory(tmp_path, monkeypatch):
     assert "不喜欢连续追问" not in ctx["judge_relationship"]
     assert "不喜欢连续追问" in ctx["relationship"]
     assert "一次只问一个问题" in ctx["relationship"]
+    assert "保持轻松交流" not in ctx["relationship"]
     assert ctx["person_id"] == "manual-person"
 
 
