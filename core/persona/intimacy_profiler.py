@@ -131,7 +131,7 @@ def store_findings(
     person_id: str,
     findings: list[dict],
     *,
-    source_type: str = "wechat-profile",
+    source_type: str = "history-profile",
 ) -> list[int]:
     if not relationship_memory.learning_enabled(person_id):
         return []
