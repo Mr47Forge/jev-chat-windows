@@ -621,6 +621,13 @@ class Overlay:
         insight_box.addWidget(self.intent)
         self.judgmentExtra = _label("", 12, _MUTED)
         insight_box.addWidget(self.judgmentExtra)
+        self.replyLogic = PlainTextEdit()
+        self.replyLogic.setReadOnly(True)
+        self.replyLogic.setAccessibleName("术语与回复逻辑")
+        self.replyLogic.setPlaceholderText("有足够关系信号时，这里会解释 IOI/IOD、关系动作和为什么这样回复。")
+        self.replyLogic.setFixedHeight(190)
+        self.replyLogic.hide()
+        insight_box.addWidget(self.replyLogic)
         self.insight.setToolTip("根据当前可见聊天做实时关系判断，不等于心理诊断；信息不足时应显示为信息不足。")
         self.insight.hide()
         body.addWidget(self.insight)
@@ -2459,6 +2466,7 @@ class Overlay:
         self._current = False
         self._clear_cards()
         self.insight.hide()
+        self.replyLogic.hide()
         self.referenceNote.hide()
         self.empty.show()
         self.updated.setText("")
@@ -3168,6 +3176,9 @@ class Overlay:
             detail_lines.append("  ·  ".join(extra))
         self.judgmentExtra.setText("\n".join(detail_lines))
         self.judgmentExtra.setToolTip("\n".join(errors) if errors else "")
+        reply_logic_text = str(result.get("reply_logic_text") or "").strip()
+        self.replyLogic.setPlainText(reply_logic_text)
+        self.replyLogic.setVisible(bool(reply_logic_text))
 
         danger = answers.get("danger_level") or {}
         score = danger.get("score")

@@ -10,11 +10,13 @@ try:
     from .jev_client import JevError, ask
     from .questions import JUDGE_QUESTIONS, build_rank_question, build_state, guidance_text
     from .relationship_strategy import needs_history, should_stop, strategy_context
+    from .reply_logic import build as build_reply_logic, render_text as render_reply_logic
 except ImportError:
     from draft import draft_candidates
     from jev_client import JevError, ask
     from questions import JUDGE_QUESTIONS, build_rank_question, build_state, guidance_text
     from relationship_strategy import needs_history, should_stop, strategy_context
+    from reply_logic import build as build_reply_logic, render_text as render_reply_logic
 
 _REPLY_IDX = {"reply_a": 0, "reply_b": 1, "reply_c": 2}
 
@@ -148,6 +150,11 @@ def analyze(
         except (TypeError, ValueError):
             scores[idx] = 0.0
 
+    reply_logic = build_reply_logic(
+        answers,
+        candidates[best_index] if candidates else "",
+    )
+
     return {
         "candidates": candidates,
         "best_index": best_index,
@@ -161,6 +168,8 @@ def analyze(
         "history_checked": history_checked,
         "history_context": effective_context,
         "stop_analysis": should_stop(answers) if judged else False,
+        "reply_logic": reply_logic,
+        "reply_logic_text": render_reply_logic(reply_logic),
     }
 
 

@@ -28,3 +28,4 @@ required=core/persona/person_agent.py
 required=core/persona/interaction_strategy.py
 required=core/sources/models.py
 required=core/sources/provider.py
+required=core/reply_logic.py
