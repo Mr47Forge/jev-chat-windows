@@ -105,6 +105,7 @@ def source_prompt(
     intimacy_context: str,
     relationship_setting: str = "",
     notes: str = "",
+    framework_context: str = "",
     include_intimacy: bool = True,
 ) -> str:
     ladder = "\n".join(
@@ -120,6 +121,7 @@ def source_prompt(
         "请根据以下已保存信息生成互动攻略。\n\n"
         f"【当前会话关系设置】\n{relationship_setting or '未知'}\n"
         f"【联系人备注】\n{notes or '无'}\n\n"
+        f"【方法论参考】\n{framework_context or '暂无'}\n\n"
         f"【人物长期画像】\n{person_profile or '暂无'}\n\n"
         f"【关系趋势】\n{relationship_context or '暂无'}\n\n"
         + intimacy_block
@@ -267,6 +269,7 @@ def generate(
     intimacy_context: str,
     relationship_setting: str,
     notes: str,
+    framework_context: str = "",
     provider: str,
     model: str,
     base_url: str | None,
@@ -282,6 +285,7 @@ def generate(
         intimacy_context=intimacy_context,
         relationship_setting=relationship_setting,
         notes=notes,
+        framework_context=framework_context,
         include_intimacy=include_intimacy,
     )
     content = llm.chat(
