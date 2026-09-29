@@ -1,29 +1,27 @@
 # -*- coding: utf-8 -*-
-"""恋爱场景的实时判断题。
+"""恋爱场景实时关系判断题。
 
-这一层只负责“当前聊天片段”的轻量关系判断，不做长期心理诊断。
-设计参考并重新实现自两个 MIT 项目：
-- she-love-me: https://github.com/863401402/she-love-me
-  关系阶段、趋势、投入不对称、证据不足留白。
-- goutoujunshi: https://github.com/shengjidaguai-china/goutoujunshi
-  事实/推测/未知分离、互惠、边界、下一步行动和可退出原则。
-
-完整版权说明见仓库 NOTICE。
+职责拆分：
+- relationship_stage：关系状态；
+- interaction_trend：短期方向；
+- interaction_task：当前功能任务；
+- m3_phase：经典 M3 教学投影，只解释，不驱动回复；
+- best_action（core/questions.py）：本轮唯一主要动作。
 """
 
 LOVE_QUESTIONS: dict = {
     "partner_tone": {
         "type": "choice",
         "instructions": (
-            "What is the other person's observable interaction tone in the latest exchange? "
-            "Judge only from visible wording and recent behavior. Do not infer a hidden mental state. "
+            "What is the other person's OBSERVABLE interaction tone in the latest exchange? "
+            "Judge visible wording and recent behavior only. Do not infer a hidden personality or diagnosis. "
             "If evidence is weak or mixed, choose unclear."
         ),
         "criteria": {
             "warm": "Open, engaged, caring, or clearly receptive.",
             "playful": "Light teasing, joking, banter, or flirtatious play without clear hostility.",
             "neutral": "Ordinary factual or logistical exchange without a strong emotional signal.",
-            "testing": "They are checking attention, sincerity, memory, priority, or whether you care.",
+            "testing": "They are visibly checking attention, sincerity, memory, priority, or whether you care.",
             "hurt": "They visibly express disappointment, sadness, feeling ignored, or being let down.",
             "angry": "They visibly blame, confront, criticize, or escalate.",
             "withdrawing": "They are shortening, disengaging, ending contact, or asking for space.",
@@ -33,97 +31,89 @@ LOVE_QUESTIONS: dict = {
     "relationship_stage": {
         "type": "choice",
         "instructions": (
-            "Based only on evidence available in this chat snippet, what relationship stage is supported RIGHT NOW? "
-            "Classify from current evidence directly; this is NOT an adjacency ladder and may jump across labels when a strong current message supports it. "
-            "Do not promote ordinary friendliness into romance. A serious explicit relationship/commitment proposal is stronger evidence than generic flirting, "
-            "while an obvious joke should still be treated as a joke. If the snippet is too short or lacks evidence, choose insufficient. "
-            "This is a descriptive interaction stage, not a diagnosis."
+            "Classify the relationship STATUS directly supported RIGHT NOW by the visible chat and explicitly supplied relationship label. "
+            "This field is NOT a trend field: do not use warming/cooling/push-pull here. "
+            "It is NOT an adjacency ladder and may jump when strong current evidence supports it. "
+            "A serious explicit relationship/commitment proposal is stronger evidence than generic flirting; an obvious joke is not. "
+            "Choose insufficient when current evidence and explicit label do not support a reliable status."
         ),
         "criteria": {
-            "insufficient": "Not enough evidence to place the relationship on a romantic progression.",
-            "early_probing": "Early contact, basic familiarity, tentative interest, or exploratory conversation.",
-            "warming": "Mutual engagement is increasing; more personal sharing, playful interest, or repeated contact appears.",
-            "ambiguous_push_pull": "There is attraction or investment but also hesitation, mixed signals, testing, or uneven pacing.",
-            "pre_commitment": (
-                "There are strong relationship-like signals, explicit romantic intent, future-oriented commitment talk, "
-                "or a serious proposal to define/advance the relationship. This label can be selected directly from a strong current signal."
-            ),
-            "stable_relationship": (
-                "The chat clearly reflects an established mutually recognized relationship. "
-                "Use current direct evidence even if an earlier snippet was classified much lower."
-            ),
-            "cooling": "The recent interaction shows sustained reduction in warmth, initiative, openness, or willingness to engage.",
+            "insufficient": "The current evidence is not enough to place the relationship reliably.",
+            "early_contact": "New or lightly familiar contact; no reliable mutual romantic interest is established.",
+            "familiar_or_friend": "Clear familiarity or friendship-like connection, but current evidence does not establish mutual romance.",
+            "mutual_romantic_interest": "Both sides visibly reciprocate romantic attraction or affection, but the relationship is not yet functioning like dating/partnership.",
+            "dating_or_undefined": "They are dating, behaving relationship-like, or mutually intimate while formal status remains undefined/ambiguous.",
+            "pre_commitment": "There is explicit serious intent to define, commit to, or materially advance the relationship.",
+            "stable_relationship": "The chat/explicit label clearly reflects an established mutually recognized romantic relationship.",
+            "former_relationship": "The relationship has clearly ended or the people are discussing an already-ended romantic relationship.",
         },
     },
     "interaction_trend": {
         "type": "choice",
         "instructions": (
-            "What short-term interaction trend is visible across the recent messages? "
-            "Use behavior such as initiative, message depth, responsiveness, repair, and withdrawal. "
-            "Do not guess from one emoji or one short reply. Choose insufficient when the window is too small."
+            "What SHORT-TERM directional trend is visible across the recent messages? "
+            "Use initiative, message depth, responsiveness, repair, openness, and withdrawal. "
+            "Do not turn a single emoji or one short reply into a trend."
         ),
         "criteria": {
             "warming": "Recent interaction is becoming more engaged, open, playful, cooperative, or intimate.",
             "stable": "No meaningful directional change is visible.",
             "cooling": "Recent interaction is becoming shorter, less responsive, less open, or more distant.",
-            "volatile": "The interaction swings sharply between closeness and tension or approach and withdrawal.",
-            "insufficient": "Not enough recent evidence to determine a trend.",
+            "volatile": "Recent interaction swings sharply between approach/withdrawal or warmth/tension.",
+            "insufficient": "Not enough recent evidence to determine a direction.",
         },
     },
     "reciprocity": {
         "type": "choice",
         "instructions": (
-            "Within the visible recent exchange, how balanced is observable effort? "
+            "Within the visible recent exchange, how balanced is OBSERVABLE effort? "
             "Use initiation, follow-up questions, topic continuation, repair attempts, and substantive engagement. "
-            "Do not treat message count alone as affection. Choose insufficient if the sample is too small."
+            "Do not treat raw message count alone as affection."
         ),
         "criteria": {
             "balanced": "Both sides contribute meaningful initiative and engagement at a roughly comparable level.",
-            "user_more": "The user is visibly carrying more of the initiation, repair, questioning, or continuation.",
-            "partner_more": "The other person is visibly carrying more of the initiative, repair, questioning, or continuation.",
-            "insufficient": "The visible sample is too small or too one-sided to assess reciprocity reliably.",
+            "user_more": "The user is visibly carrying more initiation, repair, questioning, or continuation.",
+            "partner_more": "The other person is visibly carrying more initiative, repair, questioning, or continuation.",
+            "insufficient": "The visible sample is too small or one-sided to assess reciprocity reliably.",
+        },
+    },
+    "interaction_task": {
+        "type": "choice",
+        "instructions": (
+            "Using the non-funnel Mystery/goutoujunshi translation, which FUNCTIONAL relationship task best describes the current interaction? "
+            "This is a descriptive task label, not a right to escalate and not a required sequence. "
+            "Choose directly from current evidence; tasks may be skipped or revisited."
+        ),
+        "criteria": {
+            "insufficient": "No reliable relationship task can be identified from the current exchange.",
+            "initiate_contact": "The main function is simply starting/restarting contact in a low-pressure way.",
+            "observe_interest": "The main function is observing whether interest/engagement is actually reciprocal.",
+            "express_interest_filter": "Mutual interest is sufficiently present that the interaction is expressing interest while learning fit/compatibility.",
+            "build_connection": "The exchange is primarily deepening familiarity through reciprocal conversation and self-disclosure.",
+            "build_trust": "The exchange is primarily about reliability, repair, consistency, vulnerability, or emotional safety.",
+            "increase_intimacy": "Both sides are already engaging in a more intimate/romantic topic and the current task is responding to that existing intimacy.",
+            "confirm_next_step": "The current interaction is ready for a mutually clear next step such as a plan or relationship clarification.",
         },
     },
     "m3_phase": {
         "type": "choice",
         "instructions": (
-            "Classify the strongest Mystery Method M3 phase directly supported by the CURRENT visible interaction. "
-            "This is a legacy social-training label, not a scientific diagnosis and NOT a required step-by-step sequence. "
-            "Do not force adjacency: current evidence may jump from A1 directly to A3, C2, C3, S1, or another supported phase. "
-            "Do not keep the answer artificially low because an earlier turn was lower. Also do not jump from one emoji or one joke. "
-            "Explicit romantic, commitment, intimate, or sexual statements can be strong evidence when the surrounding tone shows they are serious. "
-            "For S2, hesitation is a stop/pause signal, never something to push through."
+            "Educational projection only: classify the strongest classic Mystery Method M3 label supported by the CURRENT visible interaction. "
+            "This label MUST NOT control the reply action. It is not scientific and not a required sequence. Do not force adjacency; it is not an adjacency ladder. "
+            "Do not keep it low because an earlier turn was lower; do not jump from one joke or emoji. "
+            "For S2, hesitation means pause/clarify willingness, never something to overcome."
         ),
         "criteria": {
-            "insufficient": "Not enough evidence to map the current interaction to M3.",
-            "A1": "Opening/contact only; interaction has started but reliable reciprocal interest is not yet supported.",
-            "A2": "The other person shows observable interest/investment toward the user: initiative, extension, questions, playful engagement, or repeated IOIs.",
-            "A3": "Mutual attraction is openly reciprocated; the other person's interest is already supported and the user is clearly returning interest.",
-            "C1": "Conversation/rapport beyond the opening: both sides are genuinely getting to know each other.",
-            "C2": "Connection/trust: sustained personal sharing, repeated contact, meaningful familiarity, or stronger relational connection is directly supported.",
-            "C3": "Strong personal/romantic intimacy or close relationship-like interaction is directly supported.",
-            "S1": "Mutually initiated sexual/physical intimacy is directly present; generic flirting or sexual jokes alone are not enough.",
-            "S2": "Hesitation, ambivalence, or withdrawal appears around an already sexual/physical situation; the correct implication is pause and clarify willingness.",
-            "S3": "Consensual sexual activity is explicitly stated as already occurring or having occurred; never infer this from flirting or sexual talk alone."
-        },
-    },
-    "love_action": {
-        "type": "choice",
-        "instructions": (
-            "What relationship-level next move best fits this exact moment? "
-            "Prefer the smallest useful action. Do not optimize for 'winning' the person. "
-            "Respect reciprocity and explicit boundaries. If the other person clearly asks for space, rejects contact, "
-            "or shows discomfort, choose give_space. If key facts are missing, choose check_history rather than inventing."
-        ),
-        "criteria": {
-            "respond_lightly": "Keep the exchange easy and natural; no need to escalate or define the relationship.",
-            "show_care": "Acknowledge feelings, attention, or importance without overpromising.",
-            "flirt_lightly": "A small playful or flirtatious step is supported and still easy for either side to exit.",
-            "clarify": "Reduce ambiguity by calmly asking or stating one important point.",
-            "invite": "Suggest one concrete, low-pressure next interaction or meeting because reciprocity supports it.",
-            "repair": "Address a real hurt, misunderstanding, or conflict before trying to advance.",
-            "give_space": "Stop pushing and reduce contact because the other person asked for space, rejected, or is visibly withdrawing.",
-            "check_history": "Verify prior facts, promises, or context before replying substantively.",
+            "insufficient": "Not enough evidence to map the current interaction to a classic M3 label.",
+            "A1": "Opening/contact only; reliable reciprocal interest is not yet supported.",
+            "A2": "The other person shows observable interest/investment: initiative, extension, questions, playful engagement, or repeated IOIs.",
+            "A3": "Mutual attraction is openly reciprocated; both sides are clearly returning romantic interest.",
+            "C1": "Conversation/rapport beyond opening: both sides are genuinely getting to know each other.",
+            "C2": "Connection/trust: sustained personal sharing, repeated contact, meaningful familiarity, or stronger connection is supported.",
+            "C3": "Strong personal/romantic intimacy or close relationship-like interaction is supported.",
+            "S1": "Mutually initiated sexual/physical intimacy is directly present; generic flirting or sexual jokes are not enough.",
+            "S2": "Hesitation/ambivalence/withdrawal appears around an already sexual/physical situation; pause and clarify willingness.",
+            "S3": "Consensual sexual activity is explicitly stated as already occurring or having occurred; never infer it from sexual talk alone.",
         },
     },
 }
@@ -131,13 +121,18 @@ LOVE_QUESTIONS: dict = {
 LOVE_CHOICE_LABELS: dict = {
     "partner_tone": {
         "warm": "温暖投入", "playful": "轻松调侃", "neutral": "普通交流",
-        "testing": "在试探你", "hurt": "明显受伤", "angry": "明显生气",
+        "testing": "在确认你的态度/注意", "hurt": "明显受伤", "angry": "明显生气",
         "withdrawing": "正在收缩互动", "unclear": "信息不足",
     },
     "relationship_stage": {
-        "insufficient": "信息不足", "early_probing": "初识试探期", "warming": "暧昧升温期",
-        "ambiguous_push_pull": "暧昧拉锯期", "pre_commitment": "关系确认前",
-        "stable_relationship": "稳定关系期", "cooling": "降温期",
+        "insufficient": "信息不足",
+        "early_contact": "初识/轻熟悉",
+        "familiar_or_friend": "熟悉/朋友连接",
+        "mutual_romantic_interest": "双向浪漫兴趣",
+        "dating_or_undefined": "约会中/关系未定义",
+        "pre_commitment": "关系确认/承诺前",
+        "stable_relationship": "稳定关系",
+        "former_relationship": "已结束的关系",
     },
     "interaction_trend": {
         "warming": "升温", "stable": "平稳", "cooling": "降温",
@@ -146,6 +141,16 @@ LOVE_CHOICE_LABELS: dict = {
     "reciprocity": {
         "balanced": "投入较平衡", "user_more": "你投入更多",
         "partner_more": "对方投入更多", "insufficient": "信息不足",
+    },
+    "interaction_task": {
+        "insufficient": "任务信息不足",
+        "initiate_contact": "发起/恢复接触",
+        "observe_interest": "观察兴趣与互惠",
+        "express_interest_filter": "表达兴趣 + 双向筛选",
+        "build_connection": "建立连接",
+        "build_trust": "建立/修复信任",
+        "increase_intimacy": "承接已出现的亲密",
+        "confirm_next_step": "确认双方下一步",
     },
     "m3_phase": {
         "insufficient": "M3 信息不足",
@@ -159,18 +164,13 @@ LOVE_CHOICE_LABELS: dict = {
         "S2": "S2 · 出现犹豫，暂停确认",
         "S3": "S3 · 已明确发生双方同意的性行为",
     },
-    "love_action": {
-        "respond_lightly": "自然接话", "show_care": "表达在意", "flirt_lightly": "轻度调情",
-        "clarify": "澄清一个关键点", "invite": "低压力邀约", "repair": "先修复关系",
-        "give_space": "给对方空间", "check_history": "先核对聊天记录",
-    },
 }
 
+# m3_phase 故意不传给起草：只用于 UI 教学解释，不能反向控制回复。
 LOVE_GUIDE_FIELDS = (
     ("partner_tone", "对方当前状态"),
-    ("relationship_stage", "关系阶段"),
+    ("relationship_stage", "关系状态"),
     ("interaction_trend", "互动趋势"),
     ("reciprocity", "近期互惠"),
-    ("m3_phase", "M3 实时阶段"),
-    ("love_action", "关系策略"),
+    ("interaction_task", "当前关系任务"),
 )

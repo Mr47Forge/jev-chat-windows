@@ -3152,13 +3152,17 @@ class Overlay:
             "\n可能需要 · " + _choice(answers, "she_needs") + conf("she_needs")
         )
 
-        love_bits = [
-            "对方状态 · " + _choice(answers, "partner_tone"),
-            "关系阶段 · " + _choice(answers, "relationship_stage"),
-            "M3阶段 · " + _choice(answers, "m3_phase"),
-            "互动趋势 · " + _choice(answers, "interaction_trend"),
-            "近期互惠 · " + _choice(answers, "reciprocity"),
-        ]
+        love_bits = []
+        for key, title in (
+            ("partner_tone", "对方状态"),
+            ("relationship_stage", "关系状态"),
+            ("interaction_trend", "互动趋势"),
+            ("reciprocity", "近期互惠"),
+            ("interaction_task", "当前任务"),
+            ("m3_phase", "M3教学投影"),
+        ):
+            if (answers.get(key) or {}).get("choice") is not None:
+                love_bits.append(title + " · " + _choice(answers, key))
         extra = []
         should = (answers.get("should_reply_now") or {}).get("noul")
         if isinstance(should, (int, float)) and 0 <= should <= 1:
@@ -3172,7 +3176,7 @@ class Overlay:
         errors = result.get("analysis_errors") or []
         if errors:
             extra.append(errors[0])
-        detail_lines = ["  ·  ".join(love_bits)]
+        detail_lines = ["  ·  ".join(love_bits)] if love_bits else []
         if extra:
             detail_lines.append("  ·  ".join(extra))
         self.judgmentExtra.setText("\n".join(detail_lines))

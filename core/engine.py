@@ -8,13 +8,13 @@ from __future__ import annotations
 try:
     from .draft import draft_candidates
     from .jev_client import JevError, ask
-    from .questions import JUDGE_QUESTIONS, build_rank_question, build_state, guidance_text
+    from .questions import build_rank_question, build_state, guidance_text, questions_for_relationship
     from .relationship_strategy import needs_history, should_stop, strategy_context
     from .reply_logic import build as build_reply_logic, render_text as render_reply_logic
 except ImportError:
     from draft import draft_candidates
     from jev_client import JevError, ask
-    from questions import JUDGE_QUESTIONS, build_rank_question, build_state, guidance_text
+    from questions import build_rank_question, build_state, guidance_text, questions_for_relationship
     from relationship_strategy import needs_history, should_stop, strategy_context
     from reply_logic import build as build_reply_logic, render_text as render_reply_logic
 
@@ -50,7 +50,7 @@ def analyze(
     jev_provider / jev_model / jev_base_url：判断与排序模型。
 
     三段式：
-    1. 先让 Jev 回答 7 道判断题；
+    1. 先让 Jev 回答当前关系模式需要的判断题；
     2. 把判断结果作为参考交给起草模型写候选；
     3. 再让 Jev 给候选排序。
 
@@ -59,9 +59,10 @@ def analyze(
     - 第二次判断/排序失败：照样返回已经生成的候选，只是不做有效排序；
     - 起草本身失败或候选被过滤光：才真正失败。
     """
+    effective_judge_relationship = judge_relationship if judge_relationship is not None else relationship
     state = build_state(
         messages,
-        judge_relationship if judge_relationship is not None else relationship,
+        effective_judge_relationship,
         keep=context,
         reply_to=reply_to,
     )
@@ -70,10 +71,12 @@ def analyze(
     analysis_errors: list[str] = []
     judged = False
 
+    judge_questions = questions_for_relationship(effective_judge_relationship)
+
     try:
         first = ask(
             state,
-            dict(JUDGE_QUESTIONS),
+            judge_questions,
             timeout=timeout,
             provider=jev_provider,
             model=jev_model,
@@ -114,7 +117,7 @@ def analyze(
     if not candidates:
         raise JevError("起草结果没有可用候选回复")
 
-    questions = {} if judged else dict(JUDGE_QUESTIONS)
+    questions = {} if judged else dict(judge_questions)
     if len(candidates) >= 2:
         questions.update(build_rank_question(candidates, persona))
 

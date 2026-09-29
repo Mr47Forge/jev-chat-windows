@@ -4,8 +4,10 @@ from __future__ import annotations
 
 try:
     from .love_questions import LOVE_CHOICE_LABELS, LOVE_GUIDE_FIELDS, LOVE_QUESTIONS
+    from .persona.module_policy import realtime_relationship_enabled
 except ImportError:
     from love_questions import LOVE_CHOICE_LABELS, LOVE_GUIDE_FIELDS, LOVE_QUESTIONS
+    from persona.module_policy import realtime_relationship_enabled
 
 JUDGE_QUESTIONS: dict = {
     "literal_question": {
@@ -117,42 +119,17 @@ JUDGE_QUESTIONS: dict = {
         },
     },
     "best_action": {
-        "type": "choice",
-        "instructions": (
-            "What type of next action is best? Do not decide whether to send a message immediately. "
-            "Ignore timing. Choose only the action type. "
-            "If they asked you to recall a specific past message or event and you have not shown that you actually remember it, "
-            "choose check_history — do not apologize or invent a plan instead."
-        ),
-        "criteria": {
-            "check_history": (
-                "Look up prior chat or facts before taking a position. "
-                "Use when they ask you to repeat, recall, or prove you remember something specific."
-            ),
-            "apologize": (
-                "Lead with a sincere apology for a real mistake or hurt already identified. "
-                "Not for an unnamed forgotten thing when you should first find out what it was."
-            ),
-            "give_commitment": (
-                "Give a concrete promise, deadline, or arrangement they asked for "
-                "in a conflict or work-pressure setting."
-            ),
-            "explain": (
-                "Explain what happened or why, without leading with apology or a new plan."
-            ),
-            "acknowledge": (
-                "Show you heard them and care, without new facts, an apology, or a plan. "
-                "Use for light chat or when they mainly need to feel seen."
-            ),
-            "say_less": (
-                "Keep it short or add nothing. Extra words would over-explain, reopen a closed topic, "
-                "or pour fuel on an ultimatum that told you not to talk."
-            ),
-            "make_plan": (
-                "Propose or confirm logistics (time, place, task) for a non-conflict request "
-                "such as a meal or a meeting."
-            ),
-        },
+        "check_history": "先核对聊天记录",
+        "apologize": "为已知问题道歉",
+        "give_commitment": "给出具体承诺",
+        "explain": "说明事实与原因",
+        "acknowledge": "回应并接住",
+        "say_less": "简短回应或留白",
+        "make_plan": "商量具体安排",
+        "flirt_lightly": "轻度承接暧昧",
+        "clarify_relationship": "澄清关系意图",
+        "repair": "先修复关系",
+        "give_space": "停止追加、给空间",
     },
     "she_needs": {
         "type": "choice",
@@ -209,8 +186,16 @@ JUDGE_QUESTIONS: dict = {
 }
 
 
-# 恋爱场景的实时关系判断与原 Jev 题目走同一次 System One 请求。
+# 全集常量保留给兼容/测试；真正实时调用按会话关系选择问题。
+BASE_JUDGE_QUESTIONS = dict(JUDGE_QUESTIONS)
 JUDGE_QUESTIONS.update(LOVE_QUESTIONS)
+
+
+def questions_for_relationship(relationship: str) -> dict:
+    questions = dict(BASE_JUDGE_QUESTIONS)
+    if realtime_relationship_enabled(relationship):
+        questions.update(LOVE_QUESTIONS)
+    return questions
 
 # choice 类答案的中文说法，界面和起草小抄共用这一份（app/overlay.py 从这里导）。
 CHOICE_LABELS: dict = {
