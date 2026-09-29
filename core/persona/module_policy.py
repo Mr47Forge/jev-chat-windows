@@ -69,7 +69,7 @@ MODULES = {
 }
 
 _ROMANTIC = {
-    "恋爱对象", "暧昧对象", "伴侣", "对象", "情侣", "配偶",
+    "恋爱对象", "暧昧对象", "恋人", "暧昧", "伴侣", "对象", "情侣", "女朋友", "男朋友", "配偶",
     "partner", "romantic", "romantic partners", "dating", "lover", "girlfriend", "boyfriend",
 }
 _NON_ROMANTIC = {
