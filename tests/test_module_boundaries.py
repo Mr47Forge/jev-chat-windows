@@ -133,3 +133,11 @@ def test_draft_priority_keeps_persona_below_live_action():
     from core import draft
 
     assert "人格 Skill、M3/PUA术语、长期攻略不能改写本轮主要动作" in draft.SYSTEM
+
+
+def test_ranker_keeps_persona_below_best_action():
+    from core.questions import build_rank_question
+
+    q = build_rank_question(["a", "b"], "偏好短句")["best_reply"]["instructions"]
+    assert "hard priority" in q
+    assert "must not rescue" in q
