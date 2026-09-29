@@ -120,7 +120,8 @@ def test_strategy_model_does_not_receive_raw_source_items(tmp_path, monkeypatch)
     combined = str(captured)
     assert "更喜欢一次只聊一个问题" in combined
     assert "未经结构化的原始观察" not in combined
-    assert "狗头军师长期策略依据" in captured["notes"]
+    assert "狗头军师长期策略依据" in captured["framework_context"]
+    assert "狗头军师长期策略依据" not in captured["notes"]
     assert captured["include_intimacy"] is False
 
 
