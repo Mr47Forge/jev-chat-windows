@@ -139,3 +139,46 @@ def context_for(interaction_task: str, best_action: str, *, max_chars: int = 180
     if not lines:
         return ""
     return "【狗头军师上游依据（只补充执行方式，不改变本轮主动作）】\n" + "\n".join(lines)
+
+
+_PROFILE_PATHS = [
+    ("references/practical/万能夸人的话术技巧：真诚认可的实用指南.md", ("具体", "夸", "认可", "观察")),
+    ("references/practical/为他人提供情绪价值：温暖且有效的回应指南.md", ("情绪", "倾听", "理解", "回应")),
+    ("references/practical/关系投入失衡：互惠判断、降级投入与退出决策.md", ("互惠", "投入", "边界", "失衡")),
+    ("references/practical/主动表达、第一次见面与自然接触.md", ("表达", "邀请", "边界", "确认")),
+    ("references/practical/长期记忆与关系档案.md", ("证据", "关系", "时间", "记忆")),
+]
+
+
+@lru_cache(maxsize=1)
+def profile_context(max_chars: int = 2600) -> str:
+    """给长期互动攻略生成器的狗头军师依据。
+
+    只提供原则/方法，不包含任何人物事实；人物事实仍来自 Jev 自己的证据层。
+    """
+    selected: list[tuple[int, str, str]] = []
+    seen = set()
+    for rel, words in _PROFILE_PATHS:
+        for block in _blocks(_read(rel)):
+            score = sum(1 for word in words if word in block)
+            if score <= 0:
+                continue
+            normalized = re.sub(r"\s+", " ", block)
+            sig = normalized[:160]
+            if sig in seen:
+                continue
+            seen.add(sig)
+            selected.append((score, rel, normalized))
+    selected.sort(key=lambda x: (-x[0], len(x[2])))
+
+    lines = []
+    used = 0
+    for _, rel, block in selected[:8]:
+        item = f"- [{Path(rel).name}] {block}"
+        if used + len(item) > max_chars:
+            break
+        lines.append(item)
+        used += len(item)
+    if not lines:
+        return ""
+    return "【狗头军师长期策略依据（方法论，不是人物事实）】\n" + "\n".join(lines)
