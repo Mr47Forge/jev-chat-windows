@@ -48,7 +48,10 @@ def test_inference_is_marked_and_cannot_become_full_confidence(tmp_path, monkeyp
     row = memory.recall("x")[0]
     assert row["certainty"] == "inferred"
     assert row["confidence"] <= 0.85
-    assert "（推测）可能比较在意仪式感" in memory.profile_context("x")
+    profile = memory.profile_context("x")
+    assert "可能比较在意仪式感" in profile
+    assert "推测 85%" in profile
+    assert "证据×1" in profile
 
 
 def test_new_explicit_memory_can_supersede_old_one(tmp_path, monkeypatch):
