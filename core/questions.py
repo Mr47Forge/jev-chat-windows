@@ -193,7 +193,18 @@ JUDGE_QUESTIONS.update(LOVE_QUESTIONS)
 
 def questions_for_relationship(relationship: str) -> dict:
     questions = dict(BASE_JUDGE_QUESTIONS)
-    if realtime_relationship_enabled(relationship):
+    romantic = realtime_relationship_enabled(relationship)
+
+    # best_action 对所有场景共用，但恋爱专用动作不能出现在朋友/同事/家人候选里。
+    best = dict(questions["best_action"])
+    criteria = dict(best.get("criteria") or {})
+    if not romantic:
+        criteria.pop("flirt_lightly", None)
+        criteria.pop("clarify_relationship", None)
+    best["criteria"] = criteria
+    questions["best_action"] = best
+
+    if romantic:
         questions.update(LOVE_QUESTIONS)
     return questions
 
