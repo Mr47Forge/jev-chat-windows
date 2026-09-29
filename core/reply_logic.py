@@ -5,6 +5,19 @@
 """
 from __future__ import annotations
 
+_M3_LABELS = {
+    "insufficient": "信息不足",
+    "A1": "A1 · 开场/建立接触",
+    "A2": "A2 · 对方兴趣",
+    "A3": "A3 · 双向吸引确认",
+    "C1": "C1 · 对话/熟悉",
+    "C2": "C2 · 连接/信任",
+    "C3": "C3 · 亲密连接",
+    "S1": "S1 · 双方已进入亲密/性互动",
+    "S2": "S2 · 出现犹豫，暂停确认",
+    "S3": "S3 · 已明确发生双方同意的性行为",
+}
+
 
 def _choice(answers: dict, key: str) -> str:
     return str(((answers or {}).get(key) or {}).get("choice") or "")
@@ -24,6 +37,7 @@ def build(answers: dict, recommended_reply: str = "") -> dict:
     action = _choice(answers, "love_action")
     need = _choice(answers, "she_needs")
     intent = _choice(answers, "true_intent")
+    m3_phase = _choice(answers, "m3_phase")
 
     terms = []
 
@@ -90,6 +104,12 @@ def build(answers: dict, recommended_reply: str = "") -> dict:
         })
 
     logic = []
+    if m3_phase and m3_phase != "insufficient":
+        logic.append(
+            "M3 当前阶段直接按这一轮证据判为 "
+            + _M3_LABELS.get(m3_phase, m3_phase)
+            + "；它不是从上一轮阶段按 +1 推出来的。"
+        )
     if need == "care":
         logic.append("当前首先解决“被认真听见/被在意”的需要，所以避免长篇解释或连续追问。")
     elif need == "action":
@@ -142,6 +162,8 @@ def build(answers: dict, recommended_reply: str = "") -> dict:
             "note": "“能级”不是标准心理学量表，这里拆成互动张力、你的投入和互惠空间。",
         },
         "stage": stage,
+        "m3_phase": m3_phase,
+        "m3_label": _M3_LABELS.get(m3_phase, m3_phase),
     }
 
 
@@ -149,6 +171,12 @@ def render_text(data: dict) -> str:
     if not data:
         return ""
     lines = []
+    if data.get("m3_phase") and data.get("m3_phase") != "insufficient":
+        lines += [
+            "【M3 实时阶段】",
+            "- " + str(data.get("m3_label") or data.get("m3_phase")),
+            "  这是按当前证据直接定位，不受上一轮阶段的 +1 限制。",
+        ]
     if data.get("terms"):
         lines.append("【术语判读】")
         for item in data["terms"]:

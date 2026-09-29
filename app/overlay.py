@@ -3155,6 +3155,7 @@ class Overlay:
         love_bits = [
             "对方状态 · " + _choice(answers, "partner_tone"),
             "关系阶段 · " + _choice(answers, "relationship_stage"),
+            "M3阶段 · " + _choice(answers, "m3_phase"),
             "互动趋势 · " + _choice(answers, "interaction_trend"),
             "近期互惠 · " + _choice(answers, "reciprocity"),
         ]

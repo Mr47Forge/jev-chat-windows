@@ -33,17 +33,25 @@ LOVE_QUESTIONS: dict = {
     "relationship_stage": {
         "type": "choice",
         "instructions": (
-            "Based only on evidence available in this chat snippet, what relationship stage is supported? "
-            "Do not promote ordinary friendliness into romance. If the snippet is too short or lacks evidence, "
-            "choose insufficient. This is a descriptive interaction stage, not a diagnosis."
+            "Based only on evidence available in this chat snippet, what relationship stage is supported RIGHT NOW? "
+            "Classify from current evidence directly; this is NOT an adjacency ladder and may jump across labels when a strong current message supports it. "
+            "Do not promote ordinary friendliness into romance. A serious explicit relationship/commitment proposal is stronger evidence than generic flirting, "
+            "while an obvious joke should still be treated as a joke. If the snippet is too short or lacks evidence, choose insufficient. "
+            "This is a descriptive interaction stage, not a diagnosis."
         ),
         "criteria": {
             "insufficient": "Not enough evidence to place the relationship on a romantic progression.",
             "early_probing": "Early contact, basic familiarity, tentative interest, or exploratory conversation.",
             "warming": "Mutual engagement is increasing; more personal sharing, playful interest, or repeated contact appears.",
             "ambiguous_push_pull": "There is attraction or investment but also hesitation, mixed signals, testing, or uneven pacing.",
-            "pre_commitment": "There are strong relationship-like signals or future-oriented expectations, but status is not clearly defined.",
-            "stable_relationship": "The chat clearly reflects an established mutually recognized relationship.",
+            "pre_commitment": (
+                "There are strong relationship-like signals, explicit romantic intent, future-oriented commitment talk, "
+                "or a serious proposal to define/advance the relationship. This label can be selected directly from a strong current signal."
+            ),
+            "stable_relationship": (
+                "The chat clearly reflects an established mutually recognized relationship. "
+                "Use current direct evidence even if an earlier snippet was classified much lower."
+            ),
             "cooling": "The recent interaction shows sustained reduction in warmth, initiative, openness, or willingness to engage.",
         },
     },
@@ -74,6 +82,29 @@ LOVE_QUESTIONS: dict = {
             "user_more": "The user is visibly carrying more of the initiation, repair, questioning, or continuation.",
             "partner_more": "The other person is visibly carrying more of the initiative, repair, questioning, or continuation.",
             "insufficient": "The visible sample is too small or too one-sided to assess reciprocity reliably.",
+        },
+    },
+    "m3_phase": {
+        "type": "choice",
+        "instructions": (
+            "Classify the strongest Mystery Method M3 phase directly supported by the CURRENT visible interaction. "
+            "This is a legacy social-training label, not a scientific diagnosis and NOT a required step-by-step sequence. "
+            "Do not force adjacency: current evidence may jump from A1 directly to A3, C2, C3, S1, or another supported phase. "
+            "Do not keep the answer artificially low because an earlier turn was lower. Also do not jump from one emoji or one joke. "
+            "Explicit romantic, commitment, intimate, or sexual statements can be strong evidence when the surrounding tone shows they are serious. "
+            "For S2, hesitation is a stop/pause signal, never something to push through."
+        ),
+        "criteria": {
+            "insufficient": "Not enough evidence to map the current interaction to M3.",
+            "A1": "Opening/contact only; interaction has started but reliable reciprocal interest is not yet supported.",
+            "A2": "The other person shows observable interest/investment toward the user: initiative, extension, questions, playful engagement, or repeated IOIs.",
+            "A3": "Mutual attraction is openly reciprocated; the other person's interest is already supported and the user is clearly returning interest.",
+            "C1": "Conversation/rapport beyond the opening: both sides are genuinely getting to know each other.",
+            "C2": "Connection/trust: sustained personal sharing, repeated contact, meaningful familiarity, or stronger relational connection is directly supported.",
+            "C3": "Strong personal/romantic intimacy or close relationship-like interaction is directly supported.",
+            "S1": "Mutually initiated sexual/physical intimacy is directly present; generic flirting or sexual jokes alone are not enough.",
+            "S2": "Hesitation, ambivalence, or withdrawal appears around an already sexual/physical situation; the correct implication is pause and clarify willingness.",
+            "S3": "Consensual sexual activity is explicitly stated as already occurring or having occurred; never infer this from flirting or sexual talk alone."
         },
     },
     "love_action": {
@@ -116,6 +147,18 @@ LOVE_CHOICE_LABELS: dict = {
         "balanced": "投入较平衡", "user_more": "你投入更多",
         "partner_more": "对方投入更多", "insufficient": "信息不足",
     },
+    "m3_phase": {
+        "insufficient": "M3 信息不足",
+        "A1": "A1 · 开场/建立接触",
+        "A2": "A2 · 对方兴趣",
+        "A3": "A3 · 双向吸引确认",
+        "C1": "C1 · 对话/熟悉",
+        "C2": "C2 · 连接/信任",
+        "C3": "C3 · 亲密连接",
+        "S1": "S1 · 双方已进入亲密/性互动",
+        "S2": "S2 · 出现犹豫，暂停确认",
+        "S3": "S3 · 已明确发生双方同意的性行为",
+    },
     "love_action": {
         "respond_lightly": "自然接话", "show_care": "表达在意", "flirt_lightly": "轻度调情",
         "clarify": "澄清一个关键点", "invite": "低压力邀约", "repair": "先修复关系",
@@ -128,5 +171,6 @@ LOVE_GUIDE_FIELDS = (
     ("relationship_stage", "关系阶段"),
     ("interaction_trend", "互动趋势"),
     ("reciprocity", "近期互惠"),
+    ("m3_phase", "M3 实时阶段"),
     ("love_action", "关系策略"),
 )

@@ -69,7 +69,7 @@ def test_target_statement_can_remain_explicit():
     assert got["memories"][0]["certainty"] == "explicit"
 
 
-def test_intimacy_strategy_never_jumps_more_than_one_level():
+def test_intimacy_strategy_uses_current_evidence_not_plus_one_ladder():
     from core.persona import interaction_strategy
 
     got = interaction_strategy.normalize({
@@ -77,11 +77,23 @@ def test_intimacy_strategy_never_jumps_more_than_one_level():
         "intimacy_progression": {
             "current_level": 2,
             "next_level": 8,
+            "next_reason": "对方已经主动把话题带到现实协商",
             "recommended_topics": ["测试"],
         },
     })
     assert got["intimacy_progression"]["current_level"] == 2
-    assert got["intimacy_progression"]["next_level"] == 3
+    assert got["intimacy_progression"]["next_level"] == 8
+    assert "主动" in got["intimacy_progression"]["next_reason"]
+
+    cooled = interaction_strategy.normalize({
+        "summary": "测试",
+        "intimacy_progression": {
+            "current_level": 6,
+            "next_level": 2,
+            "next_reason": "对方明显收缩，先回到轻暧昧以下",
+        },
+    })
+    assert cooled["intimacy_progression"]["next_level"] == 2
 
 
 def test_markdown_export_contains_all_person_layers(tmp_path, monkeypatch):

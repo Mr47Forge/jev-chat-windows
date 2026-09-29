@@ -36,14 +36,17 @@ SYSTEM = """你是 Jev 的长期互动策略分析器。输入是一个成年目
 4. 不给“保证成功”“让她上头”“拿捏”“测试服从度”等承诺或操控性策略。
 5. 不建议故意冷落、制造嫉妒、撒谎、施压、灌醉、羞辱边界、反复试探拒绝。
 6. 夸奖必须具体到“夸什么维度 + 怎么表达 + 什么场景更适合 + 哪种夸法少用”。
-7. 关系推进一次只建议一小步，并给出积极/不确定/停止三类反馈信号。
-8. 亲密话题严格区分：话题兴趣、幻想、现实意愿、实际经历、明确边界。
-9. 性/亲密推进使用 0~8 阶梯。只能依据已有双向信号判断 current_level；
-   next_level 默认最多 +1。没有证据时宁可停在较低等级。
-10. “聊得开”“开玩笑”“幻想”都不能视为现实同意。现实行为只以当下清楚、自愿、
+7. “当前处于什么阶段”和“下一步建议做什么”必须分开。current_stage/current_level 直接按现有证据判断，
+   不允许因为上一轮较低就强制只升一级；强证据可以跨级，降温/撤回也可以直接回落。
+8. 关系动作默认选择当前最小有效动作，但如果对方已经明确主动发起更高层级的话题或关系意图，
+   可以直接承接那个已经发生的层级，不要机械要求补走中间步骤。
+9. 亲密话题严格区分：话题兴趣、幻想、现实意愿、实际经历、明确边界。
+10. 性/亲密 0~8 只用于描述“当前证据支持到哪里”和“当前适合承接到哪里”，不是必须逐级通关的流程。
+    next_level 可以跨级，也可以回落；跨级必须有明确的当前证据支持，不能靠猜测。
+11. “聊得开”“开玩笑”“幻想”都不能视为现实同意。现实行为只以当下清楚、自愿、
     有能力且可撤回的同意为准。
-11. 给出的示例话术必须像自然聊天骨架，不能假装知道对方没说过的事。
-12. 输出严格 JSON，不要 Markdown，不要额外解释。
+12. 给出的示例话术必须像自然聊天骨架，不能假装知道对方没说过的事。
+13. 输出严格 JSON，不要 Markdown，不要额外解释。
 
 JSON 结构：
 {
@@ -77,6 +80,7 @@ JSON 结构：
     "current_name":"对应阶梯名称",
     "next_level":0,
     "next_name":"对应阶梯名称",
+    "next_reason":"为什么当前可直接承接到这个层级；若回落也说明原因",
     "recommended_topics":[],
     "transition_examples":[],
     "do_not_jump_to":[],
@@ -190,11 +194,8 @@ def normalize(data: dict) -> dict:
     except (TypeError, ValueError):
         next_level = current_level
 
-    # 默认最多只跨一层。模型即便输出跳级，也在这里压回去。
-    next_level = min(next_level, current_level + 1)
-    if next_level < current_level:
-        next_level = current_level
-
+    # current_level / next_level 都是“按当前证据直接判断”的状态，不再强制相邻。
+    # next_level 允许跨级承接已经明确出现的信号，也允许在降温/不适时回落。
     ladder = {x["level"]: x["name"] for x in INTIMACY_LADDER}
 
     try:
@@ -233,6 +234,7 @@ def normalize(data: dict) -> dict:
             "current_name": ladder[current_level],
             "next_level": next_level,
             "next_name": ladder[next_level],
+            "next_reason": _text(intimacy.get("next_reason"), 600),
             "recommended_topics": [_text(x, 400) for x in _list(intimacy.get("recommended_topics")) if _text(x)][:8],
             "transition_examples": [_text(x, 500) for x in _list(intimacy.get("transition_examples")) if _text(x)][:6],
             "do_not_jump_to": [_text(x, 300) for x in _list(intimacy.get("do_not_jump_to")) if _text(x)][:8],
