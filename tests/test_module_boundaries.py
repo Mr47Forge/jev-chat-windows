@@ -18,10 +18,14 @@ def test_nonromantic_realtime_does_not_run_love_or_m3_questions():
     assert "relationship_stage" not in friend
     assert "m3_phase" not in friend
     assert "interaction_task" not in friend
+    assert "flirt_lightly" not in friend["best_action"]["criteria"]
+    assert "clarify_relationship" not in friend["best_action"]["criteria"]
 
     assert "relationship_stage" in romantic
     assert "m3_phase" in romantic
     assert "interaction_task" in romantic
+    assert "flirt_lightly" in romantic["best_action"]["criteria"]
+    assert "clarify_relationship" in romantic["best_action"]["criteria"]
     assert "m3_phase" in legacy_romantic
 
 
