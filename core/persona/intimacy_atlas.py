@@ -239,22 +239,36 @@ def search(query: str, *, kinds: set[str] | None = None, limit: int = 20) -> lis
 
 
 def canonicalize(raw: str, *, kinds: set[str] | None = None) -> dict:
-    hits = search(raw, kinds=kinds, limit=1)
-    if hits:
-        return hits[0]
+    """严格标准化：只接受标准化后的 ID/标签精确命中。
+
+    模糊/包含搜索只用于 UI 搜索，不用于把人物证据强行合并到现有性癖条目。
+    """
+    q = _norm(raw)
+    if q:
+        for item in unified_terms():
+            if kinds and item.get("kind") not in kinds:
+                continue
+            if q in {_norm(item.get("id", "")), _norm(item.get("label", ""))}:
+                return dict(item)
     return {
         "kind": "custom",
         "source": "jev",
-        "id": "custom:" + (_norm(raw) or "unknown"),
+        "id": "custom:" + (q or "unknown"),
         "label": str(raw or "").strip(),
     }
 
 
-def archetype_scores(features: dict[str, float | int]) -> dict[str, float]:
-    """按 KinkXKnow 的权重结构计算角色倾向。
+def archetype_scores(
+    features: dict[str, float | int],
+    *,
+    evidence_type: str = "",
+) -> dict[str, float]:
+    """按 KinkXKnow 权重计算问卷角色倾向。
 
-    features 是 0~10 的证据强度，不等于诊断分数。
+    只允许显式问卷/用户确认输入。聊天中由 LLM 猜出的“特征强度”不能冒充原项目问卷答案。
     """
+    if str(evidence_type or "").strip() != "questionnaire":
+        raise ValueError("KinkXKnow 评分只接受 evidence_type='questionnaire' 的显式问卷输入")
     clean: dict[str, float] = {}
     for key, value in (features or {}).items():
         try:
