@@ -55,7 +55,7 @@ def _init(con: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS people (
             person_id TEXT PRIMARY KEY,
             display_name TEXT NOT NULL DEFAULT '',
-            relationship TEXT NOT NULL DEFAULT '恋爱对象',
+            relationship TEXT NOT NULL DEFAULT '未设置',
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL
         );
@@ -204,7 +204,7 @@ def ensure_person(person_id: str, display_name: str = "", relationship: str | No
         raise ValueError("person_id 不能为空")
     now = int(time.time())
     relationship_explicit = relationship is not None and bool(str(relationship).strip())
-    relationship_value = str(relationship).strip() if relationship_explicit else "恋爱对象"
+    relationship_value = str(relationship).strip() if relationship_explicit else "未设置"
     with _db() as con:
         con.execute(
             """INSERT INTO people(person_id, display_name, relationship, created_at, updated_at)
@@ -801,8 +801,17 @@ def get_import_state(person_id: str, provider: str) -> dict:
         return dict(row) if row else {}
 
 
-def profile_context(person_id: str, limit: int = 60) -> str:
-    """生成给 Jev/狗头军师使用的精简持久记忆文本。"""
+def profile_context(
+    person_id: str,
+    limit: int = 120,
+    *,
+    include_strategy: bool = False,
+) -> str:
+    """生成证据加权后的精简人物画像。
+
+    同一结论来自多个独立 source 时合并显示证据数；相邻但不同的结论不因为相似而合并。
+    strategy certainty 默认排除，避免旧策略反向污染人物事实。
+    """
     rows = recall(person_id, limit=limit)
     if not rows:
         return ""
@@ -811,13 +820,39 @@ def profile_context(person_id: str, limit: int = 60) -> str:
         "habit": "习惯", "event": "重要事件", "promise": "约定",
         "profile": "人物特征", "communication": "沟通偏好",
     }
+    buckets: dict[tuple[str, str], list[dict]] = {}
+    for row in rows:
+        if row.get("certainty") == "strategy" and not include_strategy:
+            continue
+        key = (str(row.get("kind") or ""), str(row.get("content") or "").strip())
+        if key[0] and key[1]:
+            buckets.setdefault(key, []).append(row)
+
     grouped: dict[str, list[str]] = {}
-    for row in reversed(rows):
-        prefix = {"explicit": "", "inferred": "（推测）", "strategy": "（策略判断）"}.get(row.get("certainty"), "")
-        grouped.setdefault(labels.get(row["kind"], row["kind"]), []).append(prefix + row["content"])
+    certainty_rank = {"strategy": 0, "inferred": 1, "explicit": 2}
+    for (kind, content), items in buckets.items():
+        certainty = max(
+            (str(x.get("certainty") or "inferred") for x in items),
+            key=lambda x: certainty_rank.get(x, -1),
+        )
+        confidence = max(float(x.get("confidence") or 0.0) for x in items)
+        evidence_keys = {
+            (str(x.get("source_type") or ""), str(x.get("source_id") or ""), int(x.get("id") or 0))
+            for x in items
+        }
+        evidence_count = len(evidence_keys)
+        if certainty == "explicit":
+            prefix = f"（明确，证据×{evidence_count}）"
+        elif certainty == "inferred":
+            prefix = f"（推测 {round(confidence * 100)}%，证据×{evidence_count}）"
+        else:
+            prefix = f"（策略判断 {round(confidence * 100)}%，证据×{evidence_count}）"
+        grouped.setdefault(labels.get(kind, kind), []).append(prefix + content)
+
     return "\n".join(
         f"【{kind}】\n" + "\n".join(f"- {x}" for x in values)
         for kind, values in grouped.items()
+        if values
     )
 
 

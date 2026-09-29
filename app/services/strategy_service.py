@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app import chat_profiles, relationship_memory, settings
 from core.persona import interaction_strategy
+from core.persona.module_policy import intimacy_allowed
 
 
 def resolve_person(chat_or_person: str) -> str:
@@ -20,6 +21,7 @@ def generate_strategy_for_person(
     *,
     relationship_setting: str = "",
     notes: str = "",
+    include_intimacy: bool | None = None,
 ) -> dict:
     person_id = relationship_memory.resolve_person_id(person_id)
     if not person_id:
@@ -28,27 +30,23 @@ def generate_strategy_for_person(
         raise ValueError("请先在全局设置里配置起草模型密钥")
 
     person = relationship_memory.person_record(person_id)
-    sources = relationship_memory.source_items(person_id, limit=80)
-    raw_source_text = "\n".join(
-        f"[{x.get('platform')} / {x.get('source_kind')}] {str(x.get('content') or '').strip()}"
-        for x in sources[-40:]
-        if x.get("source_kind") != "agent_chat" and str(x.get("content") or "").strip()
-    )[-12000:]
-    merged_notes = str(notes or "").strip()
-    if raw_source_text:
-        merged_notes = (merged_notes + "\n\n原始资料摘录：\n" + raw_source_text).strip()
+    effective_relationship = relationship_setting or str(person.get("relationship") or "")
+    allow_intimacy = intimacy_allowed(effective_relationship, explicit=include_intimacy)
 
+    # 原始 source_items 是审计档案，不直接塞给策略模型。
+    # 只有经过 memories / relationship_snapshots / intimacy_preferences 证据层整理后的内容才能驱动策略。
     generated = interaction_strategy.generate(
         person_profile=relationship_memory.profile_context(person_id, limit=160),
         relationship_context=relationship_memory.relationship_context(person_id, limit=20),
-        intimacy_context=relationship_memory.intimacy_context(person_id, limit=160),
-        relationship_setting=relationship_setting or str(person.get("relationship") or ""),
-        notes=merged_notes,
+        intimacy_context=relationship_memory.intimacy_context(person_id, limit=160) if allow_intimacy else "",
+        relationship_setting=effective_relationship,
+        notes=str(notes or "").strip(),
         provider=settings.draft_provider(),
         model=settings.draft_model() or "",
         base_url=settings.draft_base_url() or None,
         api_key=settings.llm_key(),
         thinking=settings.thinking(),
+        include_intimacy=allow_intimacy,
     )
     source_id = interaction_strategy.profile_source_id(generated)
     relationship_memory.save_strategy_profile(
@@ -70,13 +68,14 @@ def generate_strategy_for_chat(chat: str) -> dict:
         relationship_memory.ensure_person(
             person_id,
             display_name=chat,
-            relationship=str(profile.get("relationship") or "恋爱对象"),
+            relationship=str(profile.get("relationship") or "未设置"),
         )
     profile = chat_profiles.get(chat)
     return generate_strategy_for_person(
         person_id,
         relationship_setting=str(profile.get("relationship") or ""),
         notes=str(profile.get("notes") or ""),
+        include_intimacy=None,
     )
 
 

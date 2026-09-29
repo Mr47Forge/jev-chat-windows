@@ -16,12 +16,13 @@ import threading
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
+    QCheckBox, QComboBox, QDialog, QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
     QMessageBox, QPlainTextEdit, QPushButton, QTabWidget, QVBoxLayout, QWidget,
 )
 
 from app import relationship_memory
 from app.services import markdown_export_service, person_input_service, strategy_service
+from core.persona.module_policy import is_romantic_relationship
 
 
 _SOURCE_TYPES = [
@@ -70,7 +71,7 @@ class PersonWorkspace(QDialog):
         top.addWidget(self.newName, 1)
         self.newRelationship = QComboBox()
         self.newRelationship.setEditable(True)
-        self.newRelationship.addItems(["恋爱对象", "朋友", "同事", "家人", "其他"])
+        self.newRelationship.addItems(["未设置", "恋爱对象", "暧昧对象", "伴侣", "朋友", "同事", "家人", "其他"])
         self.newRelationship.setMaximumWidth(120)
         top.addWidget(self.newRelationship)
         self.newButton = QPushButton("新建")
@@ -89,6 +90,9 @@ class PersonWorkspace(QDialog):
         for label, value in _PLATFORMS:
             self.platformBox.addItem(label, value)
         meta.addRow("来源平台", self.platformBox)
+        self.intimacyCheck = QCheckBox("本次允许分析亲密/性偏好")
+        self.intimacyCheck.setToolTip("默认只对明确恋爱/暧昧/伴侣关系开启；也可以手动覆盖本次输入。")
+        meta.addRow("敏感画像", self.intimacyCheck)
         root.addLayout(meta)
 
         self.inputEdit = QPlainTextEdit()
@@ -187,7 +191,7 @@ class PersonWorkspace(QDialog):
         try:
             person = person_input_service.create_person(
                 name,
-                relationship=self.newRelationship.currentText().strip() or "恋爱对象",
+                relationship=self.newRelationship.currentText().strip() or "未设置",
             )
         except Exception as exc:
             QMessageBox.critical(self, "新建失败", str(exc))
@@ -215,6 +219,9 @@ class PersonWorkspace(QDialog):
         if not pid:
             self._clear_views()
             return
+
+        relationship = str(self._current_person().get("relationship") or "")
+        self.intimacyCheck.setChecked(is_romantic_relationship(relationship))
 
         dialogue = person_input_service.dialogue(pid, limit=300)
         if dialogue:
@@ -279,7 +286,7 @@ class PersonWorkspace(QDialog):
         intimacy = strategy.get("intimacy_progression") or {}
         lines += [
             "",
-            "亲密话题",
+            "亲密话题深度（不是关系阶段）",
             f"- 当前：{intimacy.get('current_level',0)}级 {intimacy.get('current_name','')}",
             f"- 最多下一步：{intimacy.get('next_level',0)}级 {intimacy.get('next_name','')}",
         ]
@@ -337,6 +344,7 @@ class PersonWorkspace(QDialog):
                     source_kind=source_kind,
                     platform=platform,
                     relationship=relationship,
+                    allow_intimacy=self.intimacyCheck.isChecked(),
                 )
             except Exception as exc:
                 self.analysisDone.emit(False, {}, str(exc))
@@ -370,6 +378,7 @@ class PersonWorkspace(QDialog):
                 data = strategy_service.generate_strategy_for_person(
                     pid,
                     relationship_setting=str(person.get("relationship") or ""),
+                    include_intimacy=self.intimacyCheck.isChecked(),
                 )
             except Exception as exc:
                 self.strategyDone.emit(False, {}, str(exc))

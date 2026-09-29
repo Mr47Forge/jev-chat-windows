@@ -109,13 +109,13 @@ def _strategy_md(strategy: dict) -> list[str]:
         lines.append(_bullet("停止信号：" + _esc(x)))
 
     intimacy = s.get("intimacy_progression") or {}
-    lines += ["", "### 亲密话题推进"]
+    lines += ["", "### 亲密话题深度建议（不是关系阶段）"]
     if intimacy:
         lines.append(_bullet(
             f"当前：{intimacy.get('current_level',0)}级 {_esc(intimacy.get('current_name'))}"
         ))
         lines.append(_bullet(
-            f"最多下一步：{intimacy.get('next_level',0)}级 {_esc(intimacy.get('next_name'))}"
+            f"当前可承接：{intimacy.get('next_level',0)}级 {_esc(intimacy.get('next_name'))}"
         ))
         for x in intimacy.get("recommended_topics") or []:
             lines.append(_bullet("当前可聊：" + _esc(x)))

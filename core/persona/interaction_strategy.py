@@ -13,7 +13,7 @@ from core import llm, providers
 
 SCHEMA = "jev-interaction-strategy/v1"
 
-INTIMACY_LADDER = [
+INTIMACY_TOPIC_DEPTH = [
     {"level": 0, "name": "普通聊天", "description": "日常话题、兴趣、生活近况"},
     {"level": 1, "name": "吸引与欣赏", "description": "外貌、气质、能力、具体欣赏"},
     {"level": 2, "name": "轻暧昧", "description": "双方能自然接住的调侃、好感表达"},
@@ -24,6 +24,8 @@ INTIMACY_LADDER = [
     {"level": 7, "name": "具体性偏好", "description": "具体角色、性癖、幻想、实践意愿与边界"},
     {"level": 8, "name": "现实协商", "description": "双方明确讨论现实行为、保护、边界和持续同意"},
 ]
+# 兼容旧调用；语义已经明确为“话题深度”，不是关系阶段。
+INTIMACY_LADDER = INTIMACY_TOPIC_DEPTH
 
 SYSTEM = """你是 Jev 的长期互动策略分析器。输入是一个成年目标对象的长期人物画像、关系趋势、
 亲密/性偏好证据，以及当前会话关系设置。任务不是重新描述她，而是把已有证据转换成
@@ -41,8 +43,8 @@ SYSTEM = """你是 Jev 的长期互动策略分析器。输入是一个成年目
 8. 关系动作默认选择当前最小有效动作，但如果对方已经明确主动发起更高层级的话题或关系意图，
    可以直接承接那个已经发生的层级，不要机械要求补走中间步骤。
 9. 亲密话题严格区分：话题兴趣、幻想、现实意愿、实际经历、明确边界。
-10. 性/亲密 0~8 只用于描述“当前证据支持到哪里”和“当前适合承接到哪里”，不是必须逐级通关的流程。
-    next_level 可以跨级，也可以回落；跨级必须有明确的当前证据支持，不能靠猜测。
+10. 亲密话题 0~8 只表示“聊天话题深度”，不是关系阶段、不是 M3、也不是现实行为进度。
+    current_level / next_level 可以按当前明确证据跨级或回落，但绝不能从话题深度推出现实意愿。
 11. “聊得开”“开玩笑”“幻想”都不能视为现实同意。现实行为只以当下清楚、自愿、
     有能力且可撤回的同意为准。
 12. 给出的示例话术必须像自然聊天骨架，不能假装知道对方没说过的事。
@@ -103,9 +105,16 @@ def source_prompt(
     intimacy_context: str,
     relationship_setting: str = "",
     notes: str = "",
+    include_intimacy: bool = True,
 ) -> str:
     ladder = "\n".join(
-        f"{x['level']} {x['name']}：{x['description']}" for x in INTIMACY_LADDER
+        f"{x['level']} {x['name']}：{x['description']}" for x in INTIMACY_TOPIC_DEPTH
+    )
+    intimacy_block = (
+        f"【亲密/性偏好证据】\n{intimacy_context or '暂无'}\n\n"
+        "【亲密话题深度（不是关系阶段/M3）】\n" + ladder
+        if include_intimacy else
+        "【亲密/性偏好】本人物本次未启用，不生成亲密话题建议。"
     )
     return (
         "请根据以下已保存信息生成互动攻略。\n\n"
@@ -113,8 +122,7 @@ def source_prompt(
         f"【联系人备注】\n{notes or '无'}\n\n"
         f"【人物长期画像】\n{person_profile or '暂无'}\n\n"
         f"【关系趋势】\n{relationship_context or '暂无'}\n\n"
-        f"【亲密/性偏好证据】\n{intimacy_context or '暂无'}\n\n"
-        "【亲密话题阶梯】\n" + ladder
+        + intimacy_block
     )
 
 
@@ -148,13 +156,13 @@ def _evidence(value) -> list[str]:
     return [_text(x, 300) for x in _list(value) if _text(x, 300)][:12]
 
 
-def normalize(data: dict) -> dict:
+def normalize(data: dict, *, include_intimacy: bool = True) -> dict:
     """把模型输出约束成稳定 schema；不认识的字段不进入长期策略。"""
     praise = data.get("praise") if isinstance(data.get("praise"), dict) else {}
     conversation = data.get("conversation") if isinstance(data.get("conversation"), dict) else {}
     support = data.get("emotional_support") if isinstance(data.get("emotional_support"), dict) else {}
     progress = data.get("relationship_progression") if isinstance(data.get("relationship_progression"), dict) else {}
-    intimacy = data.get("intimacy_progression") if isinstance(data.get("intimacy_progression"), dict) else {}
+    intimacy = data.get("intimacy_progression") if include_intimacy and isinstance(data.get("intimacy_progression"), dict) else {}
 
     praise_targets = []
     for x in _list(praise.get("best_targets"))[:8]:
@@ -196,7 +204,7 @@ def normalize(data: dict) -> dict:
 
     # current_level / next_level 都是“按当前证据直接判断”的状态，不再强制相邻。
     # next_level 允许跨级承接已经明确出现的信号，也允许在降温/不适时回落。
-    ladder = {x["level"]: x["name"] for x in INTIMACY_LADDER}
+    ladder = {x["level"]: x["name"] for x in INTIMACY_TOPIC_DEPTH}
 
     try:
         confidence = max(0.0, min(1.0, float(data.get("confidence", 0.5))))
@@ -229,7 +237,7 @@ def normalize(data: dict) -> dict:
             "stop_signals": [_text(x, 300) for x in _list(progress.get("stop_signals")) if _text(x)][:8],
             "evidence": _evidence(progress.get("evidence")),
         },
-        "intimacy_progression": {
+        "intimacy_progression": ({
             "current_level": current_level,
             "current_name": ladder[current_level],
             "next_level": next_level,
@@ -242,7 +250,7 @@ def normalize(data: dict) -> dict:
             "pause_signals": [_text(x, 300) for x in _list(intimacy.get("pause_signals")) if _text(x)][:8],
             "stop_signals": [_text(x, 300) for x in _list(intimacy.get("stop_signals")) if _text(x)][:8],
             "evidence": _evidence(intimacy.get("evidence")),
-        },
+        } if include_intimacy else {}),
         "boundaries_and_risks": item_list(
             data.get("boundaries_and_risks"), "item", "action", 12
         ),
@@ -265,6 +273,7 @@ def generate(
     api_key: str,
     thinking: bool = False,
     timeout: float = 120,
+    include_intimacy: bool = True,
 ) -> dict:
     spec = providers.DRAFT_PROVIDERS[provider]
     prompt = source_prompt(
@@ -273,6 +282,7 @@ def generate(
         intimacy_context=intimacy_context,
         relationship_setting=relationship_setting,
         notes=notes,
+        include_intimacy=include_intimacy,
     )
     content = llm.chat(
         spec.protocol,
@@ -288,7 +298,7 @@ def generate(
         headers=spec.headers,
         timeout=timeout,
     )
-    return normalize(_json_object(content))
+    return normalize(_json_object(content), include_intimacy=include_intimacy)
 
 
 def profile_source_id(profile: dict) -> str:
@@ -324,8 +334,8 @@ def context_text(profile: dict, *, include_intimacy: bool = False) -> str:
     intimacy = profile.get("intimacy_progression") or {}
     if include_intimacy and intimacy:
         lines.append(
-            f"- 亲密话题：当前 {intimacy.get('current_level',0)}级 "
-            f"{intimacy.get('current_name','')}；本轮最多到 "
+            f"- 亲密话题深度：当前 {intimacy.get('current_level',0)}级 "
+            f"{intimacy.get('current_name','')}；当前可承接到 "
             f"{intimacy.get('next_level',0)}级 {intimacy.get('next_name','')}"
         )
         topics = intimacy.get("recommended_topics") or []

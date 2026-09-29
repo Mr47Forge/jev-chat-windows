@@ -85,7 +85,7 @@ def _confidence(value, default=0.5) -> float:
         return default
 
 
-def _normalize(data: dict, source_kind: str) -> dict:
+def _normalize(data: dict, source_kind: str, *, allow_intimacy: bool = True) -> dict:
     allow_explicit = source_kind in {"target_statement", "chat_paste", "platform_import"}
 
     memories = []
@@ -117,6 +117,9 @@ def _normalize(data: dict, source_kind: str) -> dict:
         })
 
     intimacy = []
+    if not allow_intimacy:
+        data = dict(data)
+        data["intimacy"] = []
     for raw in data.get("intimacy") or []:
         if not isinstance(raw, dict):
             continue
@@ -174,6 +177,7 @@ def analyze_input(
     api_key: str,
     thinking: bool = False,
     relationship: str = "",
+    allow_intimacy: bool = False,
     timeout: float = 120,
 ) -> dict:
     """保存原始输入 -> Agent 分析 -> 保存结构化人物记忆 -> 保存 Agent 回复。"""
@@ -206,7 +210,8 @@ def analyze_input(
         f"人物ID：{person_id}\n"
         f"当前关系：{relationship or '未知'}\n"
         f"资料类型：{source_kind}\n"
-        f"来源平台：{platform}\n\n"
+        f"来源平台：{platform}\n"
+        f"允许亲密/性偏好分析：{'是' if allow_intimacy else '否'}\n\n"
         f"【已有长期画像】\n{existing or '暂无'}\n\n"
         f"【最近人物分析对话】\n{dialogue_text or '暂无'}\n\n"
         f"【用户本轮输入】\n{text}"
@@ -227,7 +232,7 @@ def analyze_input(
         headers=spec.headers,
         timeout=timeout,
     )
-    result = _normalize(_json_object(raw), source_kind)
+    result = _normalize(_json_object(raw), source_kind, allow_intimacy=allow_intimacy)
 
     source_ref = f"source-item:{source_id}"
     stored_memory_ids = []

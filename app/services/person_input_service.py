@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from app import relationship_memory, settings
 from core.persona import person_agent
+from core.persona.module_policy import intimacy_allowed
 
 
-def create_person(name: str, *, relationship: str = "恋爱对象", person_id: str | None = None) -> dict:
+def create_person(name: str, *, relationship: str = "未设置", person_id: str | None = None) -> dict:
     name = str(name or "").strip()
     if not name:
         raise ValueError("人物名称不能为空")
@@ -30,9 +31,12 @@ def submit(
     source_kind: str = "observation",
     platform: str = "manual",
     relationship: str = "",
+    allow_intimacy: bool | None = None,
 ) -> dict:
     if not settings.has_llm_key():
         raise ValueError("请先在全局设置中配置起草模型密钥")
+    person = relationship_memory.person_record(person_id)
+    effective_relationship = relationship or str(person.get("relationship") or "")
     return person_agent.analyze_input(
         person_id=person_id,
         text=text,
@@ -43,7 +47,8 @@ def submit(
         base_url=settings.draft_base_url() or None,
         api_key=settings.llm_key(),
         thinking=settings.thinking(),
-        relationship=relationship,
+        relationship=effective_relationship,
+        allow_intimacy=intimacy_allowed(effective_relationship, explicit=allow_intimacy),
     )
 
 
