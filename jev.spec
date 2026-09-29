@@ -18,7 +18,8 @@ hiddenimports = [
     "app.person_workspace", "app.services.person_input_service",
     "app.services.strategy_service", "app.services.markdown_export_service",
     "core.persona.intimacy_atlas", "core.persona.intimacy_profiler",
-    "core.persona.interaction_strategy", "core.persona.person_agent",
+    "core.persona.interaction_strategy", "core.persona.person_agent", "core.persona.module_policy",
+    "core.goutou_guidance", "core.reply_logic",
     "core.sources.models", "core.sources.provider",
     "core.wechat_history.selection", "core.wechat_history.tracememo_provider",
 ]
