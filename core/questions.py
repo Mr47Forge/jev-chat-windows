@@ -312,7 +312,8 @@ def build_rank_question(candidates: list[str], persona_hint: str = "") -> dict:
             "instructions": (
                 "Which candidate reply is the most appropriate next message, "
                 "given the conversation and the other person's true need? "
-                "Prefer a reply that matches the best action type. "
+                "Matching the already-selected best action type is a hard priority. "
+                "Persona/style may only break ties between action-compatible candidates; it must not rescue a candidate that conflicts with best_action. "
                 "Penalize dismissive, over-promising, or off-topic replies. "
                 "If facts are not confirmed, do not reward a candidate that pretends an external action has already happened "
                 "or that invents possession of a report, screenshot, photo, file, or other attachment. "
