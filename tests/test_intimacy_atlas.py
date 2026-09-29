@@ -31,7 +31,7 @@ def test_kinkxknow_role_scoring_is_deterministic():
         "tasking": 10,
         "impact": 10,
         "feedback": 10,
-    })
+    }, evidence_type="questionnaire")
     assert scores["Disciplinarian"] == 100.0
     assert 0 <= scores["Dominant"] <= 100
 
@@ -64,3 +64,16 @@ def test_profiler_keeps_explicit_and_canonicalizes():
     assert len(got) == 1
     assert got[0]["canonical_source"] == "kinkdirectory"
     assert got[0]["confidence"] == 1.0
+
+
+def test_kinkxknow_rejects_chat_inferred_scores():
+    import pytest
+    with pytest.raises(ValueError):
+        intimacy_atlas.archetype_scores({"contract": 8})
+
+
+def test_canonicalize_does_not_fuzzy_merge_neighboring_terms():
+    # search 可以做模糊查找，但正式 canonicalize 只允许精确 ID/标签命中。
+    item = intimacy_atlas.canonicalize("乳胶相关但不是原标签")
+    assert item["source"] == "jev"
+    assert item["kind"] == "custom"
