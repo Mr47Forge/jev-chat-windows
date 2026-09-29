@@ -121,3 +121,9 @@ def test_strategy_model_does_not_receive_raw_source_items(tmp_path, monkeypatch)
     assert "更喜欢一次只聊一个问题" in combined
     assert "未经结构化的原始观察" not in combined
     assert captured["include_intimacy"] is False
+
+
+def test_draft_priority_keeps_persona_below_live_action():
+    from core import draft
+
+    assert "人格 Skill、M3/PUA术语、长期攻略不能改写本轮主要动作" in draft.SYSTEM
