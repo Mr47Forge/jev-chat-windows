@@ -14,12 +14,20 @@ from app.services import strategy_service
 def build(title: str, messages: list) -> dict:
     profile = chat_profiles.get(title)
 
-    # 当前状态判断只能看到明确的会话关系标签 + 当前真实聊天。
-    # 旧画像、关系趋势、策略建议不能反向污染“这轮到底发生了什么”。
-    judge_relationship = str(profile.get("relationship") or "").strip() or "未设置"
-
     person_id = relationship_memory.resolve_person_id(title)
     person = relationship_memory.person_record(person_id)
+
+    # 会话单独保存的关系优先；没保存时才继承同一人物的关系。
+    # 这样跨平台聊天不会因为默认 friends 把已确认的恋爱对象重新降级。
+    profile_relationship = str(profile.get("relationship") or "").strip()
+    person_relationship = str(person.get("relationship") or "").strip() if person else ""
+    if profile.get("saved"):
+        judge_relationship = profile_relationship or "未设置"
+    elif person_relationship and person_relationship != "未设置":
+        judge_relationship = person_relationship
+    else:
+        judge_relationship = profile_relationship or "未设置"
+
     long_term = ""
     strategy = ""
     if person:
