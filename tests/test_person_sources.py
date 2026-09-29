@@ -231,3 +231,16 @@ def test_new_person_default_relationship_is_not_romantic(tmp_path, monkeypatch):
 
     person = person_input_service.create_person("测试人物")
     assert person["relationship"] == "未设置"
+
+
+def test_unsaved_chat_inherits_person_relationship_across_platforms(tmp_path, monkeypatch):
+    memory = _memory(tmp_path, monkeypatch)
+    memory.ensure_person("cross-platform", "小C", "恋爱对象")
+
+    import app.chat_profiles as chat_profiles
+    monkeypatch.setattr(chat_profiles, "_PATH", str(tmp_path / "empty-chat-profiles.json"))
+    monkeypatch.setattr(chat_profiles, "_LEGACY_CONFIG", str(tmp_path / "empty-config.json"))
+
+    from app.services import context_service
+    ctx = context_service.build("小C", [("her", "在吗")])
+    assert ctx["judge_relationship"] == "恋爱对象"
