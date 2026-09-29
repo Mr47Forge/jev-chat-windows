@@ -52,6 +52,7 @@ def build(answers: dict, recommended_reply: str = "") -> dict:
     intent = _choice(answers, "true_intent")
     m3_phase = _choice(answers, "m3_phase")
 
+    relationship_mode = bool(tone or stage or trend or reciprocity or task or m3_phase)
     terms = []
 
     if sum((
@@ -171,13 +172,13 @@ def build(answers: dict, recommended_reply: str = "") -> dict:
     return {
         "terms": terms,
         "logic": logic,
-        "energy": {
+        "energy": ({
             "interaction_tension": tension,
             "user_investment": investment,
             "reciprocity_space": space,
             "target_self_worth": "不作为调整目标",
             "note": "“能级”是课程化比喻，不是标准心理学量表；这里只拆成张力、投入和互惠空间。",
-        },
+        } if relationship_mode else {}),
         "stage": stage,
         "interaction_task": task,
         "m3_phase": m3_phase,
