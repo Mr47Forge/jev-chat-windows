@@ -178,7 +178,8 @@ def test_context_can_use_non_wechat_person_memory(tmp_path, monkeypatch):
     from app.services import context_service
     ctx = context_service.build("小B", [("her", "你好")])
 
-    assert "不喜欢连续追问" in ctx["judge_relationship"]
+    assert "不喜欢连续追问" not in ctx["judge_relationship"]
+    assert "不喜欢连续追问" in ctx["relationship"]
     assert "一次只问一个问题" in ctx["relationship"]
     assert ctx["person_id"] == "manual-person"
 
@@ -204,3 +205,28 @@ def test_agent_chat_is_not_new_evidence():
     }, "agent_chat")
     assert got["memories"] == []
     assert got["intimacy"] == []
+
+
+def test_nonromantic_agent_input_can_disable_intimacy_inference():
+    from core.persona import person_agent
+
+    got = person_agent._normalize({
+        "reply": "收到",
+        "memories": [],
+        "intimacy": [{
+            "dimension": "主导/顺从",
+            "value": "模型猜测",
+            "scope": "fantasy",
+            "certainty": "inferred",
+            "confidence": 0.6,
+        }],
+    }, "observation", allow_intimacy=False)
+    assert got["intimacy"] == []
+
+
+def test_new_person_default_relationship_is_not_romantic(tmp_path, monkeypatch):
+    memory = _memory(tmp_path, monkeypatch)
+    from app.services import person_input_service
+
+    person = person_input_service.create_person("测试人物")
+    assert person["relationship"] == "未设置"

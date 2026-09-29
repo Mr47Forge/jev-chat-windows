@@ -10,7 +10,6 @@ def test_check_history_requests_real_history_instead_of_fake_ocr_expansion():
 
     judged = {"answers": {
         "best_action": {"choice": "check_history"},
-        "love_action": {"choice": "check_history"},
         "she_needs": {"choice": "care"},
     }, "usage": {}}
     ranked = {"answers": {"best_reply": {

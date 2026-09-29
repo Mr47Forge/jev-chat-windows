@@ -20,7 +20,7 @@ def test_relationship_stage_is_not_an_adjacency_ladder():
 
 def test_m3_is_visible_in_labels_and_guidance_fields():
     assert LOVE_CHOICE_LABELS["m3_phase"]["A3"].startswith("A3")
-    assert ("m3_phase", "M3 实时阶段") in LOVE_GUIDE_FIELDS
+    assert all(name != "m3_phase" for name, _ in LOVE_GUIDE_FIELDS)
 
 
 def test_reply_logic_explains_phase_is_direct_not_plus_one():
@@ -30,10 +30,11 @@ def test_reply_logic_explains_phase_is_direct_not_plus_one():
         "partner_tone": {"choice": "warm"},
         "interaction_trend": {"choice": "warming"},
         "reciprocity": {"choice": "partner_more"},
-        "love_action": {"choice": "respond_lightly"},
+        "interaction_task": {"choice": "build_connection"},
+        "best_action": {"choice": "acknowledge"},
     }, "我也认真想过我们以后")
     assert got["m3_phase"] == "C2"
     rendered = reply_logic.render_text(got)
     assert "C2" in rendered
-    assert "+1" in rendered
-    assert "直接定位" in rendered
+    assert "仅用于理解原体系" in rendered
+    assert "本轮主动作是接住当前表达" in rendered
