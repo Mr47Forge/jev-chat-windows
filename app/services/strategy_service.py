@@ -5,6 +5,7 @@ from __future__ import annotations
 from app import chat_profiles, relationship_memory, settings
 from core.persona import interaction_strategy
 from core.persona.module_policy import intimacy_allowed
+from core.goutou_guidance import profile_context as goutou_profile_context
 
 
 def resolve_person(chat_or_person: str) -> str:
@@ -35,12 +36,17 @@ def generate_strategy_for_person(
 
     # 原始 source_items 是审计档案，不直接塞给策略模型。
     # 只有经过 memories / relationship_snapshots / intimacy_preferences 证据层整理后的内容才能驱动策略。
+    framework_notes = goutou_profile_context()
+    combined_notes = str(notes or "").strip()
+    if framework_notes:
+        combined_notes = (combined_notes + "\n\n" + framework_notes).strip()
+
     generated = interaction_strategy.generate(
         person_profile=relationship_memory.profile_context(person_id, limit=160),
         relationship_context=relationship_memory.relationship_context(person_id, limit=20),
         intimacy_context=relationship_memory.intimacy_context(person_id, limit=160) if allow_intimacy else "",
         relationship_setting=effective_relationship,
-        notes=str(notes or "").strip(),
+        notes=combined_notes,
         provider=settings.draft_provider(),
         model=settings.draft_model() or "",
         base_url=settings.draft_base_url() or None,
