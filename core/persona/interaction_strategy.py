@@ -307,44 +307,31 @@ def profile_source_id(profile: dict) -> str:
 
 
 def context_text(profile: dict, *, include_intimacy: bool = False) -> str:
-    """给实时 Jev 的短版策略，不把整份攻略每轮全塞进去。"""
+    """给实时起草的“稳定偏好”短版。
+
+    不注入 summary / relationship_progression / intimacy_progression 等动作型策略，
+    因为这些旧策略可能与当前 best_action 冲突。实时动作只由本轮 Jev 判断决定。
+    """
     if not isinstance(profile, dict) or not profile:
         return ""
 
-    lines = ["【这个人的互动攻略】"]
-    if profile.get("summary"):
-        lines.append("- 总体：" + str(profile["summary"]))
+    lines = ["【这个人的稳定互动偏好（只影响表达，不决定本轮动作）】"]
 
     praise = ((profile.get("praise") or {}).get("best_targets") or [])[:3]
     if praise:
-        lines.append("- 夸奖优先：" + "；".join(
+        lines.append("- 夸奖偏好：" + "；".join(
             f"{x.get('target','')}（{x.get('how','')}）" for x in praise if isinstance(x, dict)
         ))
 
     conv = ((profile.get("conversation") or {}).get("works") or [])[:3]
     if conv:
-        lines.append("- 聊天方式：" + "；".join(
+        lines.append("- 沟通偏好：" + "；".join(
             str(x.get("item") or "") for x in conv if isinstance(x, dict)
         ))
 
-    progress = profile.get("relationship_progression") or {}
-    if progress.get("next_step"):
-        lines.append("- 关系下一步：" + str(progress["next_step"]))
+    support = profile.get("emotional_support") or {}
+    if support.get("preferred"):
+        lines.append("- 安抚偏好：" + str(support.get("preferred")))
 
-    intimacy = profile.get("intimacy_progression") or {}
-    if include_intimacy and intimacy:
-        lines.append(
-            f"- 亲密话题深度：当前 {intimacy.get('current_level',0)}级 "
-            f"{intimacy.get('current_name','')}；当前可承接到 "
-            f"{intimacy.get('next_level',0)}级 {intimacy.get('next_name','')}"
-        )
-        topics = intimacy.get("recommended_topics") or []
-        if topics:
-            lines.append("- 当前可聊：" + "；".join(str(x) for x in topics[:4]))
-
-    risks = profile.get("boundaries_and_risks") or []
-    if include_intimacy and risks:
-        lines.append("- 边界：" + "；".join(
-            str(x.get("item") or "") for x in risks[:4] if isinstance(x, dict)
-        ))
-    return "\n".join(lines)
+    # 敏感亲密策略永远不自动进入普通实时起草；include_intimacy 仅保留接口兼容。
+    return "\n".join(lines) if len(lines) > 1 else ""
