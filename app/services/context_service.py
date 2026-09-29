@@ -23,7 +23,8 @@ def build(title: str, messages: list) -> dict:
     long_term = ""
     strategy = ""
     if person:
-        long_term = relationship_memory.memory_context(person_id, include_intimacy=False)
+        # 自动起草只带稳定人物画像；旧的关系趋势不自动注入，避免覆盖本轮实时 trend/stage。
+        long_term = relationship_memory.profile_context(person_id, limit=100)
         strategy = strategy_service.realtime_context(person_id, include_intimacy=False)
 
     # 起草层可以参考历史，但必须明确它不是本轮事实。
