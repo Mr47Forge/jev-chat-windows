@@ -119,17 +119,25 @@ JUDGE_QUESTIONS: dict = {
         },
     },
     "best_action": {
-        "check_history": "先核对聊天记录",
-        "apologize": "为已知问题道歉",
-        "give_commitment": "给出具体承诺",
-        "explain": "说明事实与原因",
-        "acknowledge": "回应并接住",
-        "say_less": "简短回应或留白",
-        "make_plan": "商量具体安排",
-        "flirt_lightly": "轻度承接暧昧",
-        "clarify_relationship": "澄清关系意图",
-        "repair": "先修复关系",
-        "give_space": "停止追加、给空间",
+        "type": "choice",
+        "instructions": (
+            "Choose ONE primary function for the very next text message. This is the only action authority. "
+            "Relationship stage, M3 labels, personality, and terminology may explain context but must not create a second action. "
+            "Choose from current visible evidence. If a specific past fact must be recalled and is not present, choose check_history."
+        ),
+        "criteria": {
+            "check_history": "Verify a specific prior fact/message before taking a position; do not guess or pretend to remember.",
+            "apologize": "Apologize for a concrete, already-known mistake/hurt.",
+            "give_commitment": "Give a concrete promise/deadline/arrangement that is actually known and can be kept.",
+            "explain": "Explain known facts/reasons without inventing missing information.",
+            "acknowledge": "Acknowledge what they said/feel without adding a new task or escalation.",
+            "say_less": "Keep it very short or naturally close; extra content would make the interaction worse.",
+            "make_plan": "Propose/confirm one concrete low-pressure plan or logistical next step.",
+            "flirt_lightly": "Reciprocate already-supported romantic/playful tension with a small, easy-to-exit flirt.",
+            "clarify_relationship": "Directly and calmly clarify an already-salient relationship intention/status.",
+            "repair": "Address a real interpersonal hurt/misunderstanding before any further progression.",
+            "give_space": "Stop adding pressure because the other person is withdrawing, rejecting, uncomfortable, or asking for space.",
+        },
     },
     "she_needs": {
         "type": "choice",
@@ -218,8 +226,10 @@ CHOICE_LABELS: dict = {
     "best_action": {
         "check_history": "先核对聊天记录", "apologize": "为已知问题道歉",
         "give_commitment": "给出具体承诺", "explain": "说明事实与原因",
-        "acknowledge": "回应并表达理解", "say_less": "简短回应或留白",
-        "make_plan": "商量具体安排",
+        "acknowledge": "回应并接住", "say_less": "简短回应或留白",
+        "make_plan": "商量具体安排", "flirt_lightly": "轻度承接暧昧",
+        "clarify_relationship": "澄清关系意图", "repair": "先修复关系",
+        "give_space": "停止追加、给空间",
     },
     "she_needs": {
         "apology": "真诚道歉", "action": "具体行动或安排", "explanation": "清楚的解释",
